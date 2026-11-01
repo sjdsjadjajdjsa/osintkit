@@ -51,13 +51,15 @@ osintkit lookup alice@example.com --dry-run          # print the prompt, no mode
 osintkit lookup example.com --raw                    # dump collected JSON, no model call
 osintkit lookup example.com --only dns_records --skip tcp_ports
 osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
+osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
 osintkit history --limit 10
 osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
 osintkit collectors
 ```
 
 Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--timeout`,
-`--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `-v` (show raw collector payloads).
+`--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `--resolver` (repeatable, for
+`dns_records`/`passive_subdomains`), `-v` (show raw collector payloads).
 
 Output flags: `--json` (final report as JSON), `--markdown` (export, default filename
 `<target>-osint.md`, override with `-o`), `--dry-run` (prompt only), `--raw` (collected data
@@ -79,7 +81,7 @@ Exit codes: `0` success, `1` synthesis or partial failure, `2` bad input.
 | `whois_registration` | domain | WHOIS |
 | `tcp_ports` | domain | local TCP connect probes |
 | `github_profile`, `github_commit_search`, `github_user_search`, `github_org_repos` | username/email/company | GitHub public API |
-| `psbdmp_search`, `code_mentions` | email/username/domain | psbdmp, grep.app |
+| `psbdmp_search`, `code_mentions` | email/username/domain | psbdmp (GitHub Gist fallback), grep.app |
 | `username_presence` | username | public profile URLs |
 
 Collectors run concurrently and independently. A dead source produces a `failed` entry in the
@@ -95,10 +97,14 @@ cleanly and the raw collection is still archived.
 ## Storage
 
 ```
-~/.osintkit/cache/     cached responses, 24h TTL
+~/.osintkit/cache/     cached responses
 ~/.osintkit/logs/      JSONL, one file per day, every request and collector result
 ~/.osintkit/reports/   archived reports (dry runs included, so they can be replayed)
 ```
+
+Cache lifetime is 24 hours by default. DNS, mail-posture, wildcard, port, and subdomain
+results expire after 1 hour and profile-presence checks after 6, because those move fastest.
+`--cache-ttl` and `--no-cache` override both.
 
 Override the root with `OSINTKIT_HOME`. Nothing leaves your machine except the collector
 requests and the synthesis call.
@@ -108,6 +114,7 @@ requests and the synthesis call.
 - All HTTP is retried with exponential backoff on `429`/`5xx`, up to three attempts.
 - Partial results still produce a report; unavailable sources are listed as gaps.
 - `--dry-run` writes the ready-to-send prompt; `--raw` writes the collected data.
+- `batch --raw` prints a JSON array of bundles, one per target.
 - `batch` runs targets concurrently (`--concurrency`, default 3) but reports in CSV order.
 - Port probing is a single connect attempt and can miss filtered ports.
 

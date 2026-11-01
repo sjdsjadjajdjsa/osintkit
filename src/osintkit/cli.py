@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import csv
+import ipaddress
 import json
 import sys
 from pathlib import Path
@@ -57,13 +58,16 @@ def root(
     max_attempts: int = typer.Option(3, "--max-attempts", min=1, max=6),
     no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the 24h cache."),
     cache_ttl: int = typer.Option(86400, "--cache-ttl", help="Cache lifetime in seconds."),
+    resolver: list[str] | None = typer.Option(
+        None, "--resolver", help="DNS resolver IP to use, repeatable."
+    ),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show collector detail."),
     version: bool = typer.Option(
         False, "--version", "-V", help="Print version and exit.",
         callback=_version_callback, is_eager=True,
     ),
 ) -> None:
-    STATE["settings"] = Settings(
+    settings = Settings(
         base_url=base_url,
         model=model,
         api_key=api_key,
@@ -74,6 +78,14 @@ def root(
         cache_ttl=cache_ttl,
         verbose=verbose,
     )
+    if resolver:
+        for entry in resolver:
+            try:
+                ipaddress.ip_address(entry)
+            except ValueError:
+                raise typer.BadParameter(f"{entry!r} is not an IP address") from None
+        settings.resolvers = list(resolver)
+    STATE["settings"] = settings
 
 
 def _pick_target(
@@ -216,13 +228,18 @@ def batch(
     markdown: bool = typer.Option(False, "--markdown", help="Write one Markdown file per target."),
     out_dir: Path | None = typer.Option(None, "--out", "-o", help="Markdown output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompts, skip the model."),
+    raw: bool = typer.Option(False, "--raw", help="JSON array of collected data, skip the model."),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop reporting at the first error."),
     concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10,
                                     help="Targets to run at once."),
+    only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
+    skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
-    settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run)
+    settings = _settings(
+        output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw
+    )
     settings.extra["quiet_progress"] = True
     try:
         rows = _read_batch(file)
@@ -234,6 +251,7 @@ def batch(
         raise typer.Exit(2)
 
     target_dir = Path(out_dir) if out_dir else Path.cwd()
+    only_set, skip_set = _parse_sets(only), _parse_sets(skip)
 
     async def run_all():
         gate = asyncio.Semaphore(concurrency)
@@ -244,7 +262,8 @@ def batch(
             async with gate:
                 try:
                     outcome = await pipeline.execute(
-                        value, settings, logger, out, declared_type=declared
+                        value, settings, logger, out,
+                        declared_type=declared, only=only_set, skip=skip_set,
                     )
                 except TargetParseError as exc:
                     return index, value, exc
@@ -255,9 +274,10 @@ def batch(
         )
 
     reports = []
+    bundles = []
     failures = 0
     for index, value, outcome in asyncio.run(run_all()):
-        if not json_out:
+        if not json_out and not raw:
             out.rule(f"[dim]{index}/{len(rows)} · {value}[/dim]")
         if isinstance(outcome, TargetParseError):
             failures += 1
@@ -266,10 +286,13 @@ def batch(
                 break
             continue
         report = outcome.report
-        reports.append(report.model_dump(mode="json"))
+        if raw:
+            bundles.append(outcome.extra["bundle"].model_dump(mode="json"))
+        else:
+            reports.append(report.model_dump(mode="json"))
         if outcome.error:
             failures += 1
-        if not json_out:
+        if not json_out and not raw:
             if markdown:
                 name = pipeline.default_markdown_path(report.target).name
                 path = pipeline.write_markdown(report, target_dir / name)
@@ -279,6 +302,9 @@ def batch(
         if fail_fast and outcome.error:
             break
 
+    if raw:
+        print(json.dumps(bundles, indent=2, ensure_ascii=False))
+        raise typer.Exit(1 if failures else 0)
     if json_out:
         print(json.dumps(reports, indent=2, ensure_ascii=False))
 

@@ -6,9 +6,12 @@ import asyncio
 
 import dns.asyncresolver
 
+from ..http import cache_hit, cache_put
 from .base import Context, collector
 from .ct import _query
 from .pastes import hackertarget_hostsearch
+
+NAMESPACE = "subdomains"
 
 COMMON_PREFIXES = (
     "www",
@@ -29,9 +32,9 @@ COMMON_PREFIXES = (
 )
 
 
-async def _resolve(name: str) -> str | None:
+async def _resolve(name: str, resolvers: list[str]) -> str | None:
     resolver = dns.asyncresolver.Resolver(configure=False)
-    resolver.nameservers = ["1.1.1.1", "8.8.8.8"]
+    resolver.nameservers = list(resolvers)
     resolver.timeout = 3.0
     resolver.lifetime = 4.0
     try:
@@ -43,9 +46,19 @@ async def _resolve(name: str) -> str | None:
     return str(next(iter(answer))).rstrip(".")
 
 
-@collector("passive_subdomains", ("domain",), "Subdomains from cert logs, passive DNS, resolution", order=25)
+@collector(
+    "passive_subdomains",
+    ("domain",),
+    "Subdomains from cert logs, passive DNS, resolution",
+    order=25,
+    ttl=3600,
+)
 async def passive_subdomains(ctx: Context) -> dict:
     domain = ctx.target.lower()
+    key = f"{domain}|{','.join(ctx.settings.resolvers)}"
+    cached = cache_hit(ctx.settings, NAMESPACE, key, ctx.cache_ttl)
+    if cached is not None:
+        return cached
     entries = await _query(ctx, f"%.{domain}", "crt")
     names: set[str] = set()
 
@@ -65,7 +78,9 @@ async def passive_subdomains(ctx: Context) -> dict:
             names.add(name)
 
     candidates = sorted(names)
-    resolved = await asyncio.gather(*(_resolve(n) for n in candidates[:80]))
+    resolved = await asyncio.gather(
+        *(_resolve(n, ctx.settings.resolvers) for n in candidates[:80])
+    )
     live = {name: ip for name, ip in zip(candidates[:80], resolved, strict=True) if ip}
 
     unresolved_prefixes = []
@@ -73,11 +88,11 @@ async def passive_subdomains(ctx: Context) -> dict:
         candidate = f"{prefix}.{domain}"
         if candidate in names:
             continue
-        ip = await _resolve(candidate)
+        ip = await _resolve(candidate, ctx.settings.resolvers)
         if ip:
             unresolved_prefixes.append({"host": candidate, "ip": ip})
 
-    return {
+    result = {
         "domain": domain,
         "discovered_count": len(names),
         "live_hosts": [{"host": h, "ip": ip} for h, ip in sorted(live.items())],
@@ -85,3 +100,5 @@ async def passive_subdomains(ctx: Context) -> dict:
         "sources": ["crt.sh", "hackertarget", "dns"],
         "note": "passive only: no brute force beyond a short common-prefix list",
     }
+    cache_put(ctx.settings, NAMESPACE, key, result)
+    return result

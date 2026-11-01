@@ -15,9 +15,13 @@ RECORD_TYPES = ("A", "AAAA", "MX", "TXT", "NS", "CNAME")
 NAMESPACE = "dns"
 
 
-def _resolver() -> dns.asyncresolver.Resolver:
+def _key(ctx: Context, host: str) -> str:
+    return f"{host}|{','.join(ctx.settings.resolvers)}"
+
+
+def _resolver(ctx: Context) -> dns.asyncresolver.Resolver:
     resolver = dns.asyncresolver.Resolver(configure=False)
-    resolver.nameservers = ["1.1.1.1", "8.8.8.8", "9.9.9.9"]
+    resolver.nameservers = list(ctx.settings.resolvers)
     resolver.timeout = 4.0
     resolver.lifetime = 6.0
     return resolver
@@ -34,8 +38,8 @@ def _format(rtype: str, record: object) -> str:
     return str(record).rstrip(".")
 
 
-async def _lookup(host: str, rtype: str) -> list[str]:
-    resolver = _resolver()
+async def _lookup(ctx: Context, host: str, rtype: str) -> list[str]:
+    resolver = _resolver(ctx)
     try:
         answer = await resolver.resolve(host, rtype, raise_on_no_answer=False, lifetime=6.0)
     except (dns.resolver.NXDOMAIN, dns.resolver.NoAnswer, dns.exception.Timeout):
@@ -47,8 +51,8 @@ async def _lookup(host: str, rtype: str) -> list[str]:
     return [_format(rtype, rd) for rd in answer]
 
 
-async def _all_records(host: str) -> dict[str, list[str]]:
-    results = await asyncio.gather(*(_lookup(host, rt) for rt in RECORD_TYPES))
+async def _all_records(ctx: Context, host: str) -> dict[str, list[str]]:
+    results = await asyncio.gather(*(_lookup(ctx, host, rt) for rt in RECORD_TYPES))
     return {
         rtype: value
         for rtype, value in zip(RECORD_TYPES, results, strict=True)
@@ -56,34 +60,40 @@ async def _all_records(host: str) -> dict[str, list[str]]:
     }
 
 
-@collector("dns_records", ("domain",), "A/AAAA/MX/TXT/NS/CNAME records", order=30)
+@collector(
+    "dns_records", ("domain",), "A/AAAA/MX/TXT/NS/CNAME records", order=30, ttl=3600
+)
 async def dns_records(ctx: Context) -> dict:
     host = ctx.target.lower()
-    cached = cache_hit(ctx.settings, NAMESPACE, host)
+    key = _key(ctx, host)
+    cached = cache_hit(ctx.settings, NAMESPACE, key, ctx.cache_ttl)
     if cached is not None:
         return cached
-    records = await _all_records(host)
-    cache_put(ctx.settings, NAMESPACE, host, records)
+    records = await _all_records(ctx, host)
+    cache_put(ctx.settings, NAMESPACE, key, records)
     return records
 
 
-@collector("dns_mail_posture", ("domain",), "SPF, DMARC, and DKIM hints", order=31)
+@collector(
+    "dns_mail_posture", ("domain",), "SPF, DMARC, and DKIM hints", order=31, ttl=3600
+)
 async def dns_mail_posture(ctx: Context) -> dict:
     host = ctx.target.lower()
-    cached = cache_hit(ctx.settings, NAMESPACE, f"mail:{host}")
+    key = f"mail:{_key(ctx, host)}"
+    cached = cache_hit(ctx.settings, NAMESPACE, key, ctx.cache_ttl)
     if cached is not None:
         return cached
 
-    txt = await _lookup(host, "TXT")
+    txt = await _lookup(ctx, host, "TXT")
     spf = [t for t in txt if t.lower().startswith("v=spf1")]
 
-    dmarc = await _lookup(f"_dmarc.{host}", "TXT") if not host.startswith("_dmarc.") else []
+    dmarc = await _lookup(ctx, f"_dmarc.{host}", "TXT") if not host.startswith("_dmarc.") else []
     dmarc = [t for t in dmarc if t.lower().startswith("v=dmarc1")]
 
     dkim_selectors = ("default", "google", "selector1", "selector2", "k1", "mail")
     dkim_hits = []
     for selector in dkim_selectors:
-        found = await _lookup(f"{selector}._domainkey.{host}", "TXT")
+        found = await _lookup(ctx, f"{selector}._domainkey.{host}", "TXT")
         if found:
             dkim_hits.append({"selector": selector, "present": True})
 
@@ -96,12 +106,12 @@ async def dns_mail_posture(ctx: Context) -> dict:
         "spf_strict": any("all" in t.lower() and "-all" in t.lower() for t in spf),
         "dmarc_policy": dmarc[0].lower() if dmarc else None,
     }
-    cache_put(ctx.settings, NAMESPACE, f"mail:{host}", result)
+    cache_put(ctx.settings, NAMESPACE, key, result)
     return result
 
 
-@collector("dns_wildcard", ("domain",), "Wildcard DNS detection", order=32)
+@collector("dns_wildcard", ("domain",), "Wildcard DNS detection", order=32, ttl=3600)
 async def dns_wildcard(ctx: Context) -> dict:
     probe = f"osintkit-wildcard-probe.{ctx.target.lower()}"
-    answers = await _lookup(probe, "A")
+    answers = await _lookup(ctx, probe, "A")
     return {"probe": probe, "wildcard": bool(answers), "answers": answers}

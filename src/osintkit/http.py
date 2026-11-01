@@ -211,11 +211,11 @@ def _retry_after(response: httpx.Response) -> float | None:
         return None
 
 
-def cache_hit(settings: Settings, namespace: str, key: str) -> Any | None:
+def cache_hit(settings: Settings, namespace: str, key: str, ttl: int | None = None) -> Any | None:
     """Read a cached non-HTTP collector result (DNS, WHOIS, TCP probes)."""
     if not settings.use_cache:
         return None
-    return cache_read(namespace, key, settings.cache_ttl)
+    return cache_read(namespace, key, settings.cache_ttl if ttl is None else ttl)
 
 
 def cache_put(settings: Settings, namespace: str, key: str, value: Any) -> None:

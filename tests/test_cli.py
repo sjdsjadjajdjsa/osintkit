@@ -199,3 +199,37 @@ def test_batch_preserves_order(monkeypatch, tmp_path):
     positions = [result.output.index(f"{name}.com ", result.output.index("batch summary"))
                  for name in ("a", "b", "c")]
     assert positions == sorted(positions)
+
+
+def test_batch_raw_returns_bundles(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\nb.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--raw"])
+    assert result.exit_code == 0
+    payload = jsonish(result.output)
+    assert [entry["target"] for entry in payload] == ["a.com", "b.com"]
+    assert payload[0]["results"][0]["data"] == {"k": "v"}
+
+
+def test_batch_honours_skip(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--raw", "--skip", "fake_source"])
+    assert result.exit_code == 0
+    assert jsonish(result.output)[0]["results"] == []
+
+
+def test_invalid_resolver_rejected():
+    result = runner.invoke(app, ["--resolver", "dns.example", "lookup", "--domain", "a.com", "--raw"])
+    assert result.exit_code == 2
+    assert "not an IP address" in result.output
+
+
+def test_resolver_flag_is_accepted(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    result = runner.invoke(
+        app, ["--resolver", "1.1.1.1", "lookup", "--domain", "a.com", "--raw"]
+    )
+    assert result.exit_code == 0

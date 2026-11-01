@@ -113,7 +113,7 @@ async def test_crt_sh_organization_counts_domains(make_context):
 async def test_dns_records_shapes_output(make_context, monkeypatch):
     ctx = make_context("example.com")
 
-    async def fake_lookup(host, rtype):
+    async def fake_lookup(_ctx, host, rtype):
         return {"A": ["93.184.216.34"], "MX": ["10 mail.example.com"]}.get(rtype, [])
 
     monkeypatch.setattr(dns, "_lookup", fake_lookup)
@@ -124,7 +124,7 @@ async def test_dns_records_shapes_output(make_context, monkeypatch):
 async def test_dns_mail_posture_flags_spf_strict(make_context, monkeypatch):
     ctx = make_context("example.com")
 
-    async def fake_lookup(host, rtype):
+    async def fake_lookup(_ctx, host, rtype):
         if host == "example.com":
             return ["v=spf1 -all"]
         if host.startswith("_dmarc."):
@@ -259,7 +259,7 @@ async def test_passive_subdomains_merges_sources(make_context, monkeypatch):
     async def fake_hosts(ctx):
         return {"hosts": [{"host": "vpn.example.com", "ip": "1.2.3.4"}]}
 
-    async def fake_resolve(name):
+    async def fake_resolve(name, resolvers):
         return "1.2.3.4" if name == "api.example.com" else None
 
     monkeypatch.setattr(subdomains, "_query", fake_query)
@@ -298,3 +298,66 @@ async def test_run_collector_times_work(make_context):
     spec = base.Collector(name="quick", target_types=("domain",), func=quick)
     result = await run_collector(spec, ctx)
     assert result.ok and result.data == [1]
+
+
+async def test_dns_uses_configured_resolvers(make_context):
+    ctx = make_context("example.com")
+    ctx.settings.resolvers = ["10.0.0.1", "10.0.0.2"]
+    resolver = dns._resolver(ctx)
+    assert resolver.nameservers == ["10.0.0.1", "10.0.0.2"]
+
+
+@respx.mock
+async def test_psbdmp_falls_back_to_gists_on_failure(make_context):
+    ctx = make_context("alice", "username")
+    respx.get(url__startswith="https://psbdmp.ws/").mock(return_value=httpx.Response(500))
+    respx.get(url__startswith="https://gist.github.com/search").mock(
+        return_value=httpx.Response(
+            200,
+            text='<a href="/owner/71c75995cf81fdc9e32fd17c1b5a43a0">x</a>',
+            headers={"content-type": "text/html"},
+        )
+    )
+    result = await pastes.psbdmp_search(ctx)
+    assert result["source"] == "github-gists"
+    assert result["pastes"][0]["url"].endswith("71c75995cf81fdc9e32fd17c1b5a43a0")
+    assert "psbdmp HTTP 500" in result["note"]
+
+
+@respx.mock
+async def test_psbdmp_empty_result_also_falls_back(make_context):
+    ctx = make_context("alice", "username")
+    respx.get(url__startswith="https://psbdmp.ws/").mock(
+        return_value=httpx.Response(200, json={"count": 0, "data": []})
+    )
+    respx.get(url__startswith="https://gist.github.com/search").mock(
+        return_value=httpx.Response(200, text="<p>nothing</p>")
+    )
+    result = await pastes.psbdmp_search(ctx)
+    assert result["pastes"] == []
+    assert result["note"] == "psbdmp had no hits"
+
+
+@respx.mock
+async def test_psbdmp_fallback_failure_is_reported(make_context):
+    ctx = make_context("alice", "username")
+    respx.get(url__startswith="https://psbdmp.ws/").mock(return_value=httpx.Response(503))
+    respx.get(url__startswith="https://gist.github.com/search").mock(
+        return_value=httpx.Response(429)
+    )
+    result = await pastes.psbdmp_search(ctx)
+    assert result["pastes"] == []
+    assert "gist search HTTP 429" in result["note"]
+
+
+async def test_run_collector_applies_collector_ttl(make_context):
+    ctx = make_context()
+    seen = {}
+
+    async def record(inner_ctx):
+        seen["ttl"] = inner_ctx.cache_ttl
+        return {}
+
+    spec = base.Collector(name="ttl", target_types=("domain",), func=record, ttl=42)
+    await run_collector(spec, ctx)
+    assert seen["ttl"] == 42

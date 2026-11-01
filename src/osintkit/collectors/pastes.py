@@ -5,11 +5,13 @@ from __future__ import annotations
 import re
 from urllib.parse import quote
 
+from .. import errors
 from .base import Context, collector
 
 PSBDMP = "https://psbdmp.ws/api/v3"
 TAG_RE = re.compile(r"<[^>]+>")
 SPACE_RE = re.compile(r"\s+")
+GIST_RE = re.compile(r'href="/([A-Za-z0-9][A-Za-z0-9-]*)/([0-9a-f]{20,})"')
 
 
 def snippet(text: str, needle: str, width: int = 140) -> str:
@@ -27,20 +29,24 @@ def snippet(text: str, needle: str, width: int = 140) -> str:
 
 @collector("psbdmp_search", ("email", "username", "domain"), "Psbdmp paste archive mentions", order=70)
 async def psbdmp_search(ctx: Context) -> dict:
-    response = await ctx.http.get(
-        f"{PSBDMP}/search/{quote(ctx.target)}",
-        namespace="psbdmp",
-        empty_on=(404, 500),
-    )
+    try:
+        response = await ctx.http.get(
+            f"{PSBDMP}/search/{quote(ctx.target)}",
+            namespace="psbdmp",
+            empty_on=(404, 500),
+        )
+    except (errors.SourceUnavailable, errors.RateLimited) as exc:
+        return await _gist_fallback(ctx, f"psbdmp unavailable ({exc})")
+
     if response.status_code != 200:
-        return {"count": 0, "pastes": []}
+        return await _gist_fallback(ctx, f"psbdmp HTTP {response.status_code}")
     try:
         body = response.json()
     except ValueError:
-        return {"count": 0, "pastes": []}
+        return await _gist_fallback(ctx, "psbdmp returned non-JSON")
     entries = body.get("data") if isinstance(body, dict) else None
     if not isinstance(entries, list):
-        return {"count": 0, "pastes": []}
+        return await _gist_fallback(ctx, "psbdmp returned an unexpected shape")
     pastes = []
     for entry in entries[:25]:
         if not isinstance(entry, dict):
@@ -57,7 +63,42 @@ async def psbdmp_search(ctx: Context) -> dict:
                 "snippet": (entry.get("snippet") or "")[:400],
             }
         )
-    return {"count": body.get("count", len(pastes)), "pastes": pastes}
+    if not pastes:
+        return await _gist_fallback(ctx, "psbdmp had no hits")
+    return {"count": body.get("count", len(pastes)), "pastes": pastes, "source": "psbdmp"}
+
+
+async def _gist_fallback(ctx: Context, note: str) -> dict:
+    """Public GitHub Gist search, used when the paste archive is unreachable."""
+    try:
+        response = await ctx.http.get(
+            "https://gist.github.com/search",
+            namespace="gist",
+            params={"q": ctx.target},
+            accept="text/html",
+            empty_on=(403, 404, 429, 500),
+        )
+    except (errors.SourceUnavailable, errors.RateLimited) as exc:
+        return {"count": 0, "pastes": [], "note": f"{note}; gist fallback failed ({exc})"}
+    if response.status_code != 200:
+        return {"count": 0, "pastes": [], "note": f"{note}; gist search HTTP {response.status_code}"}
+
+    seen: set[str] = set()
+    pastes = []
+    for owner, gist_id in GIST_RE.findall(response.text):
+        if gist_id in seen:
+            continue
+        seen.add(gist_id)
+        pastes.append(
+            {
+                "id": gist_id,
+                "url": f"https://gist.github.com/{owner}/{gist_id}",
+                "author": owner,
+            }
+        )
+        if len(pastes) >= 15:
+            break
+    return {"count": len(pastes), "pastes": pastes, "source": "github-gists", "note": note}
 
 
 @collector("code_mentions", ("email", "domain"), "Public code/repository mentions", order=71)

@@ -17,6 +17,7 @@ DEFAULT_TEMPERATURE = 0.3
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_CACHE_TTL = 24 * 60 * 60
+DEFAULT_RESOLVERS = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
 
 
 def app_home() -> Path:
@@ -57,6 +58,7 @@ class Settings:
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
     use_cache: bool = True
     cache_ttl: int = DEFAULT_CACHE_TTL
+    resolvers: list[str] = field(default_factory=lambda: list(DEFAULT_RESOLVERS))
     dry_run: bool = False
     raw: bool = False
     output_json: bool = False

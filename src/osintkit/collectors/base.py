@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any
 
 from .. import errors
@@ -20,6 +20,7 @@ class Context:
     target_type: str
     settings: Settings
     http: HttpClient
+    cache_ttl: int | None = None
 
     @property
     def hibp_key(self) -> str | None:
@@ -41,6 +42,7 @@ class Collector:
     description: str = ""
     requires: str | None = None
     order: int = 100
+    ttl: int | None = None
 
 
 REGISTRY: list[Collector] = []
@@ -53,6 +55,7 @@ def collector(
     *,
     requires: str | None = None,
     order: int = 100,
+    ttl: int | None = None,
 ) -> Callable[[CollectorFunc], CollectorFunc]:
     def register(func: CollectorFunc) -> CollectorFunc:
         REGISTRY.append(
@@ -63,6 +66,7 @@ def collector(
                 description=description,
                 requires=requires,
                 order=order,
+                ttl=ttl,
             )
         )
         return func
@@ -89,6 +93,9 @@ async def run_collector(spec: Collector, ctx: Context) -> CollectorResult:
             skipped=True,
             note=f"skipped: {hint}",
         )
+
+    if spec.ttl is not None:
+        ctx = replace(ctx, cache_ttl=spec.ttl)
 
     started = time.perf_counter()
     try:

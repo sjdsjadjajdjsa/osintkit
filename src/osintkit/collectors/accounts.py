@@ -49,7 +49,7 @@ async def _probe(ctx: Context, site: str, template: str) -> dict | None:
     }
 
 
-@collector("username_presence", ("username",), "Public profile presence", order=60)
+@collector("username_presence", ("username",), "Public profile presence", order=60, ttl=21600)
 async def username_presence(ctx: Context) -> dict:
     semaphore = asyncio.Semaphore(SEMAPHORE)
 
