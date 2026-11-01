@@ -1,0 +1,5 @@
+target,type,note
+alice@example.com,email,personal address
+torvalds,username,public handle
+example.com,domain,owned domain
+"Example Ltd",company,employer
