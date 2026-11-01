@@ -60,7 +60,6 @@ class Settings:
     dry_run: bool = False
     output_json: bool = False
     output_markdown: bool = False
-    hilite: bool = True
     verbose: bool = False
     extra: dict[str, Any] = field(default_factory=dict)
 

@@ -45,5 +45,9 @@ asyncio_mode = "auto"
 filterwarnings = ["ignore::DeprecationWarning"]
 
 [tool.ruff]
-line-length = 100
+line-length = 112
 target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "RUF", "BLE", "PYI"]
+ignore = ["B008", "BLE001"]

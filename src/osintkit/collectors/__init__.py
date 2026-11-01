@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-from .base import REGISTRY, Collector, Context, collectors_for, gather, run_collector
-
-from . import (  # noqa: F401,E402  (import order matters: side-effect registration)
+from . import (  # noqa: F401  (import order matters: side-effect registration)
     accounts,
     breaches,
     ct,
@@ -15,6 +13,7 @@ from . import (  # noqa: F401,E402  (import order matters: side-effect registrat
     subdomains,
     whois_lookup,
 )
+from .base import REGISTRY, Collector, Context, collectors_for, gather, run_collector
 
 __all__ = [
     "REGISTRY",

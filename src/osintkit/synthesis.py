@@ -21,7 +21,8 @@ authorised research.
 Rules:
 - Cite the supplied source name in every breach entry. Mark dates as found; use null when unknown.
 - Distinguish confirmed findings from plausible inference in the summary and notes.
-- Risk level reflects exposure only: high means credential-bearing breaches or a wide, live attack surface.
+- Risk level reflects exposure only: high means credential-bearing breaches or a wide,
+  live attack surface.
 - Recommendations must be concrete and actionable, not generic advice.
 - If a source failed or was skipped, note the gap in infrastructure_notes.
 
@@ -29,7 +30,9 @@ Return ONLY a JSON object, no prose and no code fences, with exactly these keys:
 {
   "summary": "3-6 sentence overview of the public footprint",
   "breaches": [{"name": "str", "date": "YYYY-MM-DD or null", "data_types": ["str"], "source": "str"}],
-  "associated_accounts": [{"platform": "str", "url": "str or null", "handle": "str or null", "note": "str or null"}],
+  "associated_accounts": [
+    {"platform": "str", "url": "str or null", "handle": "str or null", "note": "str or null"}
+  ],
   "infrastructure_notes": ["str"],
   "subdomains": ["str"],
   "risk_level": "low" | "medium" | "high",
@@ -108,11 +111,13 @@ async def synthesize(
 ) -> Analysis:
     messages = build_messages(bundle)
 
+    settings = getattr(client, "settings", None)
+
     async def call(current: list[dict[str, str]], attempt: int) -> str:
         if logger is not None:
             logger.request(
-                base_url=client.settings.base_url,
-                model=client.settings.model,
+                base_url=getattr(settings, "base_url", "unknown"),
+                model=getattr(settings, "model", "unknown"),
                 attempt=attempt,
                 dry_run=False,
                 messages=current,

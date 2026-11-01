@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, Mapping, Sequence
+from collections.abc import Mapping, Sequence
+from typing import Any, Self
 
 from .config import Settings
 from .errors import MissingAPIKey, SynthesisError
@@ -15,7 +16,7 @@ class LLMClient:
         self._own_http = http is None
         self._http = http or HttpClient(settings)
 
-    async def __aenter__(self) -> "LLMClient":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:

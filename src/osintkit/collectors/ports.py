@@ -44,13 +44,13 @@ async def _probe(host: str, port: int, service: str, semaphore: asyncio.Semaphor
             reader, writer = await asyncio.wait_for(
                 asyncio.open_connection(host, port), timeout=TIMEOUT
             )
-        except (OSError, asyncio.TimeoutError):
+        except (TimeoutError, OSError):
             return None
         banner = ""
         try:
             banner_bytes = await asyncio.wait_for(reader.read(120), timeout=1.0)
             banner = banner_bytes.decode("utf-8", "replace").strip().splitlines()[0][:120]
-        except (asyncio.TimeoutError, OSError, IndexError):
+        except (TimeoutError, OSError, IndexError):
             banner = ""
         finally:
             writer.close()

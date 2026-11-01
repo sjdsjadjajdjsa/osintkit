@@ -11,6 +11,7 @@ DOMAIN_RE = re.compile(
     r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$"
 )
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,38})$")
+COMPANY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,&'()+-]*$")
 COMPANY_HINTS = re.compile(r"\b(inc|llc|ltd|gmbh|corp|corporation|limited|plc|ag|sa|bv|oy|pty)\b", re.I)
 
 VALID_TYPES = ("email", "username", "domain", "company")
@@ -21,7 +22,9 @@ def normalise(target: str) -> str:
     if target.lower().startswith("http://") or target.lower().startswith("https://"):
         target = target.split("://", 1)[1]
     target = target.strip().strip("<>\"'")
-    if target.startswith("www."):
+    if "@" not in target:
+        target = target.split("/", 1)[0]
+    if target.lower().startswith("www."):
         target = target[4:]
     return target.rstrip("/")
 
@@ -62,5 +65,5 @@ def _check_shape(target: str, kind: str) -> None:
         raise TargetParseError(f"{target!r} is not a valid domain")
     if kind == "username" and not USERNAME_RE.match(target):
         raise TargetParseError(f"{target!r} is not a valid username")
-    if kind == "company" and len(target) < 2:
-        raise TargetParseError(f"{target!r} is too short for a company name")
+    if kind == "company" and not COMPANY_RE.match(target):
+        raise TargetParseError(f"{target!r} does not look like a company name")

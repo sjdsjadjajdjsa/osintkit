@@ -7,10 +7,10 @@ import csv
 import json
 import sys
 from pathlib import Path
-from typing import Optional
 
 import typer
 from rich import box
+from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
@@ -18,7 +18,7 @@ from . import __version__, pipeline, render
 from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, Settings, cache_clear, cache_stats
 from .errors import OsintKitError, TargetParseError
 from .logging_store import RunLogger, read_report, read_runs
-from .targets import VALID_TYPES, normalise, resolve
+from .targets import VALID_TYPES
 
 app = typer.Typer(
     add_completion=False,
@@ -41,22 +41,28 @@ def _console():
     return render.console()
 
 
+def _version_callback(value: bool) -> None:
+    if value:
+        typer.echo(f"osintkit {__version__}")
+        raise typer.Exit()
+
+
 @app.callback()
 def root(
     base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url", help="OpenAI-compatible base URL."),
     model: str = typer.Option(DEFAULT_MODEL, "--model", help="Model name sent to the endpoint."),
-    api_key: Optional[str] = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
+    api_key: str | None = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
     temperature: float = typer.Option(0.3, "--temperature", min=0.0, max=2.0),
     timeout: float = typer.Option(30.0, "--timeout", help="HTTP timeout in seconds."),
     max_attempts: int = typer.Option(3, "--max-attempts", min=1, max=6),
     no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the 24h cache."),
     cache_ttl: int = typer.Option(86400, "--cache-ttl", help="Cache lifetime in seconds."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show collector detail."),
-    version: bool = typer.Option(False, "--version", "-V", help="Print version and exit.", is_eager=True),
+    version: bool = typer.Option(
+        False, "--version", "-V", help="Print version and exit.",
+        callback=_version_callback, is_eager=True,
+    ),
 ) -> None:
-    if version:
-        typer.echo(f"osintkit {__version__}")
-        raise typer.Exit()
     STATE["settings"] = Settings(
         base_url=base_url,
         model=model,
@@ -98,17 +104,24 @@ def _parse_sets(values: list[str] | None) -> set[str] | None:
 
 def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
     report = outcome.report
-    if settings.output_json:
+    if settings.dry_run and settings.output_json:
+        print(json.dumps(
+            {"target": report.target, "target_type": report.target_type,
+             "prompt": outcome.extra.get("prompt")},
+            indent=2,
+        ))
+    elif settings.output_json:
         render.print_json(report)
     elif settings.output_markdown:
         destination = Path(settings.extra.get("markdown_path") or pipeline.default_markdown_path(report.target))
         path = pipeline.write_markdown(report, destination)
         out.print(f"[green]markdown written[/green] {path}")
     else:
-        render.render_report(report, out)
+        render.render_report(report, out, verbose=settings.verbose)
 
     if outcome.archived:
-        out.print(f"[dim]archived: {outcome.archived}[/dim]", highlight=False)
+        sink = Console(stderr=True) if settings.output_json else out
+        sink.print(f"[dim]archived: {outcome.archived}[/dim]", highlight=False)
     if outcome.error:
         out.print(Panel(render.escape(outcome.error), title="synthesis failed", border_style="red"))
         return 1
@@ -117,17 +130,17 @@ def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
 
 @app.command()
 def lookup(
-    target: Optional[str] = typer.Argument(None, help="Email, username, domain, or company."),
-    email: Optional[str] = typer.Option(None, "--email", help="Email target."),
-    username: Optional[str] = typer.Option(None, "--username", help="Username target."),
-    domain: Optional[str] = typer.Option(None, "--domain", help="Domain target."),
-    company: Optional[str] = typer.Option(None, "--company", help="Company target."),
+    target: str | None = typer.Argument(None, help="Email, username, domain, or company."),
+    email: str | None = typer.Option(None, "--email", help="Email target."),
+    username: str | None = typer.Option(None, "--username", help="Username target."),
+    domain: str | None = typer.Option(None, "--domain", help="Domain target."),
+    company: str | None = typer.Option(None, "--company", help="Company target."),
     json_out: bool = typer.Option(False, "--json", help="Raw structured JSON on stdout."),
     markdown: bool = typer.Option(False, "--markdown", help="Write a Markdown report."),
-    out_path: Optional[Path] = typer.Option(None, "--out", "-o", help="Markdown destination."),
+    out_path: Path | None = typer.Option(None, "--out", "-o", help="Markdown destination."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the prompt, skip the model."),
-    only: Optional[list[str]] = typer.Option(None, "--only", help="Run only these collectors."),
-    skip: Optional[list[str]] = typer.Option(None, "--skip", help="Skip these collectors."),
+    only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
+    skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
 ) -> None:
     """Look up one target."""
     out = _console()
@@ -192,11 +205,12 @@ def _read_batch(path: Path) -> list[tuple[str, str | None]]:
 
 @app.command()
 def batch(
-    file: Path = typer.Option(..., "--file", "-f", exists=True, dir_okay=False,
-                               help="CSV with target[,type] rows."),
+    file: Path = typer.Option(
+        ..., "--file", "-f", exists=True, dir_okay=False, help="CSV with target[,type] rows."
+    ),
     json_out: bool = typer.Option(False, "--json", help="JSON array of reports on stdout."),
     markdown: bool = typer.Option(False, "--markdown", help="Write one Markdown file per target."),
-    out_dir: Optional[Path] = typer.Option(None, "--out", "-o", help="Markdown output directory."),
+    out_dir: Path | None = typer.Option(None, "--out", "-o", help="Markdown output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompts, skip the model."),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop at the first error."),
 ) -> None:
@@ -217,7 +231,8 @@ def batch(
     failures = 0
     for index, (raw, declared) in enumerate(rows, start=1):
         logger = RunLogger(pipeline.new_run_id())
-        out.rule(f"[dim]{index}/{len(rows)} · {raw}[/dim]")
+        if not json_out:
+            out.rule(f"[dim]{index}/{len(rows)} · {raw}[/dim]")
         try:
             outcome = asyncio.run(
                 pipeline.execute(raw, settings, logger, out, declared_type=declared)
@@ -235,10 +250,11 @@ def batch(
         if json_out:
             continue
         if markdown:
-            path = pipeline.write_markdown(report, target_dir / pipeline.default_markdown_path(report.target).name)
+            name = pipeline.default_markdown_path(report.target).name
+            path = pipeline.write_markdown(report, target_dir / name)
             out.print(f"[green]markdown written[/green] {path}")
         else:
-            render.render_report(report, out)
+            render.render_report(report, out, verbose=settings.verbose)
         if fail_fast and outcome.error:
             break
 
@@ -264,7 +280,7 @@ def batch(
 @app.command()
 def history(
     limit: int = typer.Option(20, "--limit", "-n", min=1, max=200),
-    show: Optional[str] = typer.Option(None, "--show", help="Replay a stored report by path."),
+    show: str | None = typer.Option(None, "--show", help="Replay a stored report by path."),
     json_out: bool = typer.Option(False, "--json", help="JSON output."),
 ) -> None:
     """Show past runs, or replay one archived report."""
@@ -305,7 +321,8 @@ def history(
             str(run.get("started", ""))[:19].replace("T", " "),
             render.escape(str(run.get("target") or "-")),
             str(run.get("target_type") or "-"),
-            f"{run['collectors_ok']} ok / {run['collectors_failed']} failed / {run['collectors_skipped']} skipped",
+            f"{run['collectors_ok']} ok / {run['collectors_failed']} failed / "
+            f"{run['collectors_skipped']} skipped",
             str(run.get("risk") or "-"),
         )
     out.print(table)

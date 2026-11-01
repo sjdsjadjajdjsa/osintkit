@@ -6,7 +6,7 @@ import json
 import os
 import re
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,7 +14,7 @@ from .config import ensure_dirs, log_dir, reports_dir
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    return datetime.now(UTC).isoformat(timespec="milliseconds")
 
 
 def _slug(target: str) -> str:
@@ -30,7 +30,7 @@ class RunLogger:
         self.run_id = run_id
         self.target = target
         self.target_type = target_type
-        self.path = log_dir() / f"{datetime.now(timezone.utc):%Y-%m-%d}.jsonl"
+        self.path = log_dir() / f"{datetime.now(UTC):%Y-%m-%d}.jsonl"
 
     def event(self, kind: str, **fields: Any) -> None:
         record = {
@@ -94,7 +94,7 @@ def archive_report(report: dict[str, Any]) -> Path | None:
         ensure_dirs()
         root = reports_dir()
         root.mkdir(parents=True, exist_ok=True)
-        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S")
+        stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
         path = root / f"{stamp}-{_slug(str(report.get('target', 'target')))}-{int(time.time()*1000)%1000}.json"
         path.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str), "utf-8")
         return path

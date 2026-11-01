@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import time
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable
+from typing import Any
 
+from .. import errors
 from ..config import Settings
 from ..http import HttpClient
 from ..models import CollectorResult
-from .. import errors
 
 
 @dataclass(slots=True)
@@ -96,7 +97,7 @@ async def run_collector(spec: Collector, ctx: Context) -> CollectorResult:
         return _result(spec, ctx, started, ok=False, error=f"rate limited: {exc}")
     except errors.SourceUnavailable as exc:
         return _result(spec, ctx, started, ok=False, error=str(exc))
-    except (asyncio.TimeoutError, TimeoutError):
+    except TimeoutError:
         return _result(spec, ctx, started, ok=False, error="timed out")
     except Exception as exc:  # a broken source must never sink the run
         return _result(spec, ctx, started, ok=False, error=f"{type(exc).__name__}: {exc}")

@@ -6,7 +6,8 @@ import asyncio
 import json
 import random
 import time
-from typing import Any, Iterable, Mapping
+from collections.abc import Iterable, Mapping
+from typing import Any, Self
 
 import httpx
 
@@ -32,7 +33,7 @@ class HttpClient:
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )
 
-    async def __aenter__(self) -> "HttpClient":
+    async def __aenter__(self) -> Self:
         return self
 
     async def __aexit__(self, *exc: object) -> None:
@@ -170,10 +171,15 @@ class HttpClient:
             body = response.text
         except Exception:  # pragma: no cover - undecodable body
             body = ""
+        headers = {
+            name: value
+            for name, value in response.headers.items()
+            if name.lower() not in {"content-encoding", "content-length", "transfer-encoding"}
+        }
         cache_write(
             namespace,
             key,
-            {"status": response.status_code, "headers": dict(response.headers), "body": body},
+            {"status": response.status_code, "headers": headers, "body": body},
         )
 
     async def _sleep(self, attempt: int, retry_after: float | None) -> None:

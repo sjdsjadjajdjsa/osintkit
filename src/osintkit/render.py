@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from typing import Iterable
+from collections.abc import Iterable
 
 from rich import box
 from rich.console import Console, Group
@@ -36,10 +36,12 @@ def bar(level: str) -> Text:
     return text
 
 
-def render_report(report: Report, out: Console) -> None:
+def render_report(report: Report, out: Console, *, verbose: bool = False) -> None:
     out.print(_header(report))
     if report.analysis is None:
         out.print("[yellow]No analysis available.[/yellow]")
+        if verbose:
+            out.print(_raw_data(report.collectors))
         out.print(_coverage(report.collectors))
         return
 
@@ -86,6 +88,8 @@ def render_report(report: Report, out: Console) -> None:
     if analysis.recommendations:
         out.print(_bullets("Recommendations", analysis.recommendations, "green"))
 
+    if verbose:
+        out.print(_raw_data(report.collectors))
     out.print(_coverage(report.collectors))
 
 
@@ -136,6 +140,18 @@ def _coverage(results: list[CollectorResult]) -> Panel:
             escape(result.note or result.error or ""),
         )
     return Panel(table, title="Source coverage", box=box.ROUNDED, title_align="left")
+
+
+def _raw_data(results: list[CollectorResult]) -> Panel:
+    body = Text()
+    for result in results:
+        if not result.has_data:
+            continue
+        body.append(f"{result.collector}\n", style="bold cyan")
+        body.append(json.dumps(result.data, indent=2, ensure_ascii=False, default=str)[:4000] + "\n\n")
+    if not body.plain:
+        body.append("no collected data", style="dim")
+    return Panel(body, title="Raw source data", box=box.ROUNDED, title_align="left")
 
 
 def print_json(report: Report) -> None:

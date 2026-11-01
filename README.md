@@ -29,8 +29,7 @@ Requires Python 3.12+.
 Synthesis uses any OpenAI-compatible endpoint. The default is Venice:
 
 ```bash
-export API_KEY=...          # required for synthesis
-export --  # optional overrides
+export API_KEY=...   # required for synthesis
 ```
 
 | Variable | Purpose |
@@ -52,11 +51,12 @@ osintkit lookup alice@example.com --dry-run          # print the prompt, no mode
 osintkit lookup example.com --only dns_records --skip tcp_ports
 osintkit batch --file examples/targets.csv --out ./reports
 osintkit history --limit 10
+osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
 osintkit collectors
 ```
 
 Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--timeout`,
-`--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `-v`.
+`--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `-v` (show raw collector payloads).
 
 Output flags: `--json` (raw structure), `--markdown` (export, default filename
 `<target>-osint.md`, override with `-o`), `--dry-run`.

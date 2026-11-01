@@ -50,7 +50,7 @@ def _blocking_lookup(domain: str) -> dict:
     )
     out: dict[str, Any] = {}
     for key in keys:
-        if key in data and data[key]:
+        if data.get(key):
             out[key] = _clean(data[key])
     return out
 
@@ -63,7 +63,7 @@ async def whois_registration(ctx: Context) -> dict:
         return cached
     try:
         result = await asyncio.wait_for(asyncio.to_thread(_blocking_lookup, domain), timeout=25)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         return {"note": "whois lookup timed out"}
     except Exception as exc:
         return {"note": f"whois unavailable: {type(exc).__name__}"}

@@ -100,6 +100,7 @@ async def execute(
     skip: set[str] | None = None,
 ) -> Outcome:
     started = time.perf_counter()
+    progress = Console(stderr=True)
     try:
         target, target_type = resolve(raw_target, declared_type)
     except TargetParseError as exc:
@@ -119,7 +120,7 @@ async def execute(
     )
 
     async with HttpClient(settings) as http:
-        with console.status(f"[cyan]running collectors for {target}…[/cyan]", spinner="dots"):
+        with progress.status(f"[cyan]running collectors for {target}…[/cyan]", spinner="dots"):
             results = await collect(target, target_type, settings, logger, http, only, skip)
         report.collectors = results
 
@@ -128,11 +129,10 @@ async def execute(
         if settings.dry_run:
             report.notes.append("dry run: model not called")
             report.elapsed_ms = int((time.perf_counter() - started) * 1000)
-            out = console
             synthesis_prompt = synthesis.render_prompt(bundle)
-            render.print_prompt(synthesis_prompt, out)
+            if not settings.output_json:
+                render.print_prompt(synthesis_prompt, console)
             logger.event("run_end", dry_run=True, prompt=synthesis_prompt)
-            report.notes.append(json.dumps({"collector_count": len(results)}))
             return Outcome(report=report, extra={"prompt": synthesis_prompt})
 
         try:
@@ -141,7 +141,7 @@ async def execute(
                     "No API key. Set API_KEY or pass --api-key (dry run works without one)."
                 )
             async with LLMClient(settings, http) as client:
-                with console.status("[cyan]synthesising briefing…[/cyan]", spinner="dots"):
+                with progress.status("[cyan]synthesising briefing…[/cyan]", spinner="dots"):
                     report.analysis = await synthesis.synthesize(client, bundle, logger=logger)
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")
