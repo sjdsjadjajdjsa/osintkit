@@ -34,6 +34,7 @@ async def psbdmp_search(ctx: Context) -> dict:
             f"{PSBDMP}/search/{quote(ctx.target)}",
             namespace="psbdmp",
             empty_on=(404, 500),
+            timeout=ctx.http_timeout,
         )
     except (errors.SourceUnavailable, errors.RateLimited) as exc:
         return await _gist_fallback(ctx, f"psbdmp unavailable ({exc})")
@@ -77,6 +78,7 @@ async def _gist_fallback(ctx: Context, note: str) -> dict:
             params={"q": ctx.target},
             accept="text/html",
             empty_on=(403, 404, 429, 500),
+            timeout=ctx.http_timeout,
         )
     except (errors.SourceUnavailable, errors.RateLimited) as exc:
         return {"count": 0, "pastes": [], "note": f"{note}; gist fallback failed ({exc})"}
@@ -163,6 +165,7 @@ async def hn_mentions(ctx: Context) -> dict:
         namespace="hn",
         params={"query": ctx.target, "hitsPerPage": "20"},
         empty_on=(404, 429),
+        timeout=ctx.http_timeout,
     )
     if response.status_code != 200:
         return {"count": 0, "mentions": []}
@@ -208,6 +211,7 @@ async def stackoverflow_mentions(ctx: Context) -> dict:
             "sort": "relevance",
         },
         empty_on=(400, 404, 429),
+        timeout=ctx.http_timeout,
     )
     if response.status_code != 200:
         return {"count": 0, "items": []}

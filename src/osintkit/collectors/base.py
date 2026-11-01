@@ -21,6 +21,7 @@ class Context:
     settings: Settings
     http: HttpClient
     cache_ttl: int | None = None
+    http_timeout: float | None = None
 
     @property
     def hibp_key(self) -> str | None:
@@ -43,6 +44,7 @@ class Collector:
     requires: str | None = None
     order: int = 100
     ttl: int | None = None
+    timeout: float | None = None
 
 
 REGISTRY: list[Collector] = []
@@ -56,6 +58,7 @@ def collector(
     requires: str | None = None,
     order: int = 100,
     ttl: int | None = None,
+    timeout: float | None = None,
 ) -> Callable[[CollectorFunc], CollectorFunc]:
     def register(func: CollectorFunc) -> CollectorFunc:
         REGISTRY.append(
@@ -67,6 +70,7 @@ def collector(
                 requires=requires,
                 order=order,
                 ttl=ttl,
+                timeout=timeout,
             )
         )
         return func
@@ -94,8 +98,12 @@ async def run_collector(spec: Collector, ctx: Context) -> CollectorResult:
             note=f"skipped: {hint}",
         )
 
-    if spec.ttl is not None:
-        ctx = replace(ctx, cache_ttl=spec.ttl)
+    if spec.ttl is not None or spec.timeout is not None:
+        ctx = replace(
+            ctx,
+            cache_ttl=spec.ttl if spec.ttl is not None else ctx.cache_ttl,
+            http_timeout=spec.timeout,
+        )
 
     started = time.perf_counter()
     try:

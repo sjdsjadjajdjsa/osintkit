@@ -7,6 +7,7 @@ import csv
 import ipaddress
 import json
 import sys
+from dataclasses import asdict
 from pathlib import Path
 
 import typer
@@ -15,7 +16,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, pipeline, render
+from . import __version__, doctor, pipeline, render, retention
 from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, Settings, cache_clear, cache_stats
 from .errors import OsintKitError, TargetParseError
 from .logging_store import RunLogger, find_report_for_run, read_report, read_runs, run_exists
@@ -408,6 +409,42 @@ def list_collectors() -> None:
     render.console().print(table)
 
 
+@app.command("doctor")
+def doctor_cmd(
+    json_out: bool = typer.Option(False, "--json", help="JSON output."),
+) -> None:
+    """Check the key, endpoint, and writable directories."""
+    out = _console()
+    settings: Settings = STATE["settings"]  # type: ignore[assignment]
+    checks = asyncio.run(doctor.diagnose(settings))
+    if json_out:
+        print(json.dumps([asdict(check) for check in checks], indent=2))
+    else:
+        table = Table(title="doctor", box=box.SIMPLE_HEAVY)
+        table.add_column("check")
+        table.add_column("status")
+        table.add_column("detail", overflow="fold")
+        style = {"ok": "green", "warn": "yellow", "fail": "red"}
+        for check in checks:
+            table.add_row(check.name, f"[{style[check.status]}]{check.status}[/]", render.escape(check.detail))
+        out.print(table)
+    raise typer.Exit(1 if doctor.failed(checks) else 0)
+
+
+@app.command()
+def prune(
+    days: int = typer.Option(30, "--days", min=1, help="Delete anything older than this."),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Report what would go."),
+) -> None:
+    """Delete old cache entries, logs, and archived reports."""
+    out = _console()
+    counts = retention.prune(days, dry_run=dry_run)
+    verb = "would remove" if dry_run else "removed"
+    out.print(
+        f"{verb}: {counts['cache']} cached, {counts['logs']} log, {counts['reports']} report files"
+    )
+
+
 @app.command("cache")
 def cache_cmd(
     clear: bool = typer.Option(False, "--clear", help="Delete every cached response."),
@@ -419,7 +456,12 @@ def cache_cmd(
         out.print(f"[green]cleared {removed} cached responses[/green]")
         return
     count, size = cache_stats()
+    usage = retention.disk_usage()
     out.print(f"{count} files, {size / 1024:.1f} KiB in the cache")
+    out.print(
+        f"total on disk: {usage['total'] / 1024:.1f} KiB "
+        f"({usage['logs'] / 1024:.1f} KiB logs, {usage['reports'] / 1024:.1f} KiB reports)"
+    )
 
 
 def main() -> None:  # pragma: no cover - console script shim

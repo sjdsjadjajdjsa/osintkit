@@ -111,3 +111,32 @@ async def test_plain_403_is_not_retried(http):
     with pytest.raises(SourceUnavailable):
         await http.get_json(URL, namespace="q")
     assert respx.get(URL).call_count == 1
+
+
+@respx.mock
+async def test_concurrent_identical_requests_are_coalesced(settings):
+    import asyncio
+
+    calls = {"n": 0}
+
+    async def slow(request):
+        calls["n"] += 1
+        await asyncio.sleep(0.05)
+        return httpx.Response(200, json={"ok": True})
+
+    respx.get(URL).mock(side_effect=slow)
+    async with HttpClient(settings) as client:
+        results = await asyncio.gather(
+            *(client.get_json(URL, namespace="dedupe") for _ in range(4))
+        )
+    assert results == [{"ok": True}] * 4
+    assert calls["n"] == 1
+
+
+@respx.mock
+async def test_failed_inflight_task_does_not_stick(http):
+    respx.get(URL).mock(return_value=httpx.Response(500))
+    with pytest.raises(RateLimited):
+        await http.get_json(URL, namespace="d")
+    respx.get(URL).mock(return_value=httpx.Response(200, json={"ok": True}))
+    assert await http.get_json(URL, namespace="d") == {"ok": True}

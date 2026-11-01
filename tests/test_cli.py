@@ -233,3 +233,39 @@ def test_resolver_flag_is_accepted(monkeypatch):
         app, ["--resolver", "1.1.1.1", "lookup", "--domain", "a.com", "--raw"]
     )
     assert result.exit_code == 0
+
+
+def test_doctor_reports_failure_on_bad_key(monkeypatch):
+    import httpx
+    import respx
+
+    monkeypatch.setenv("API_KEY", "k" * 25)
+    with respx.mock:
+        respx.get("https://api.venice.ai/api/v1/models").mock(return_value=httpx.Response(401))
+        result = runner.invoke(app, ["doctor"])
+    assert result.exit_code == 1
+    assert "401" in result.output
+
+
+def test_doctor_json_output(monkeypatch):
+    import httpx
+    import respx
+
+    monkeypatch.setenv("API_KEY", "k" * 25)
+    with respx.mock:
+        respx.get("https://api.venice.ai/api/v1/models").mock(return_value=httpx.Response(200, json={}))
+        result = runner.invoke(app, ["doctor", "--json"])
+    assert result.exit_code == 0
+    assert any(check["status"] == "ok" for check in jsonish(result.output))
+
+
+def test_prune_dry_run():
+    result = runner.invoke(app, ["prune", "--days", "7", "--dry-run"])
+    assert result.exit_code == 0
+    assert "would remove" in result.output
+
+
+def test_cache_reports_disk_usage():
+    result = runner.invoke(app, ["cache"])
+    assert result.exit_code == 0
+    assert "total on disk" in result.output

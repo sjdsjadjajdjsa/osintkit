@@ -134,7 +134,8 @@ async def test_dns_mail_posture_flags_spf_strict(make_context, monkeypatch):
     monkeypatch.setattr(dns, "_lookup", fake_lookup)
     result = await dns.dns_mail_posture(ctx)
     assert result["spf_present"] and result["spf_strict"]
-    assert result["dmarc_present"] and result["dmarc_policy"].startswith("v=dmarc1")
+    assert result["spf_all"] == "-all"
+    assert result["dmarc_present"] and result["dmarc_policy"] == "reject"
 
 
 async def test_whois_returns_clean_fields(make_context, monkeypatch):
@@ -361,3 +362,36 @@ async def test_run_collector_applies_collector_ttl(make_context):
     spec = base.Collector(name="ttl", target_types=("domain",), func=record, ttl=42)
     await run_collector(spec, ctx)
     assert seen["ttl"] == 42
+
+
+async def test_org_slug_variants_strip_legal_suffix():
+    from osintkit.collectors.github import org_slugs
+
+    assert org_slugs("Example Ltd.") == ["example-ltd", "example"]
+    assert org_slugs("Deep Mind") == ["deep-mind"]
+
+
+@respx.mock
+async def test_github_org_repos_tries_suffix_variant(make_context):
+    ctx = make_context("Example Ltd", "company")
+    respx.get("https://api.github.com/orgs/example-ltd/repos").mock(
+        return_value=httpx.Response(404)
+    )
+    respx.get("https://api.github.com/orgs/example/repos").mock(
+        return_value=httpx.Response(200, json=[{"name": "repo"}])
+    )
+    result = await github.github_org_repos(ctx)
+    assert result["org"] == "example"
+    assert result["repositories"][0]["name"] == "repo"
+
+
+async def test_collector_timeout_reaches_context(make_context):
+    seen = {}
+
+    async def record(ctx):
+        seen["timeout"] = ctx.http_timeout
+        return {}
+
+    spec = base.Collector(name="t", target_types=("domain",), func=record, timeout=12.5)
+    await base.run_collector(spec, make_context())
+    assert seen["timeout"] == 12.5

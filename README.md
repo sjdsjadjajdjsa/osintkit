@@ -52,6 +52,8 @@ osintkit lookup example.com --raw                    # dump collected JSON, no m
 osintkit lookup example.com --only dns_records --skip tcp_ports
 osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
 osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
+osintkit doctor                                  # check key, endpoint, directories
+osintkit prune --days 30                         # delete old cache, logs, reports
 osintkit history --limit 10
 osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
 osintkit collectors
@@ -94,6 +96,12 @@ Synthesis returns strict JSON: `summary`, `breaches[]`, `associated_accounts[]`,
 with pydantic. A malformed reply gets exactly one repair round-trip, then the run fails
 cleanly and the raw collection is still archived.
 
+## Troubleshooting
+
+`osintkit doctor` reports the API key state, endpoint reachability, writable directories, and
+which optional source keys are missing. It never echoes the key itself. Exit code is `1` when
+a check fails.
+
 ## Storage
 
 ```
@@ -105,6 +113,9 @@ cleanly and the raw collection is still archived.
 Cache lifetime is 24 hours by default. DNS, mail-posture, wildcard, port, and subdomain
 results expire after 1 hour and profile-presence checks after 6, because those move fastest.
 `--cache-ttl` and `--no-cache` override both.
+
+Old files are pruned automatically at run start when `OSINTKIT_RETENTION_DAYS` is set
+(default 30). `osintkit prune --days N` does it on demand, `--dry-run` only counts.
 
 Override the root with `OSINTKIT_HOME`. Nothing leaves your machine except the collector
 requests and the synthesis call.

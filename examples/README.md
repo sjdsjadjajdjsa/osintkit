@@ -16,3 +16,10 @@ osintkit lookup --username torvalds --only github_profile,username_presence
 osintkit lookup --domain example.com --skip tcp_ports
 osintkit lookup --company "Example Ltd"
 ```
+
+Health and housekeeping:
+
+```bash
+osintkit doctor
+osintkit prune --days 14 --dry-run
+```

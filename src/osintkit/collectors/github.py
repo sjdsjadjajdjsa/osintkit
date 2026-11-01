@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from urllib.parse import quote
 
 from .. import errors
@@ -137,18 +138,40 @@ async def github_user_search(ctx: Context) -> dict:
     }
 
 
+LEGAL_SUFFIX = re.compile(
+    r"\b(inc|llc|ltd|limited|gmbh|corp|corporation|plc|ag|sa|bv|oy|pty)\.?$", re.I
+)
+
+
+def org_slugs(company: str) -> list[str]:
+    base = company.strip().lower()
+    variants = [base, LEGAL_SUFFIX.sub("", base).strip()]
+    slugs = []
+    for variant in variants:
+        slug = re.sub(r"[^a-z0-9]+", "-", variant).strip("-")
+        if slug and slug not in slugs:
+            slugs.append(slug)
+    return slugs
+
+
 @collector("github_org_repos", ("company",), "GitHub repositories owned by the company", order=52)
 async def github_org_repos(ctx: Context) -> dict:
-    slug = quote(ctx.target.strip().replace(" ", "-").lower())
-    response = await ctx.http.get(
-        f"{API}/orgs/{slug}/repos",
-        namespace="github",
-        params={"per_page": "50", "sort": "updated"},
-        headers=_headers(ctx),
-        empty_on=(404,),
-    )
-    if response.status_code == 404:
-        return {"org": slug, "found": False, "repositories": []}
+    slugs = org_slugs(ctx.target)
+    slug = slugs[0]
+    response = None
+    for candidate in slugs:
+        response = await ctx.http.get(
+            f"{API}/orgs/{quote(candidate)}/repos",
+            namespace="github",
+            params={"per_page": "50", "sort": "updated"},
+            headers=_headers(ctx),
+            empty_on=(404,),
+        )
+        if response.status_code != 404:
+            slug = candidate
+            break
+    if response is None or response.status_code == 404:
+        return {"org": slug, "tried": slugs, "found": False, "repositories": []}
     payload = response.json()
     if not isinstance(payload, list):
         return {"org": slug, "found": False, "repositories": []}

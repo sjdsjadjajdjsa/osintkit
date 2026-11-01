@@ -55,14 +55,15 @@ def _blocking_lookup(domain: str) -> dict:
     return out
 
 
-@collector("whois_registration", ("domain",), "WHOIS registration record", order=40)
+@collector("whois_registration", ("domain",), "WHOIS registration record", order=40, timeout=30)
 async def whois_registration(ctx: Context) -> dict:
     domain = ctx.target.lower()
     cached = cache_hit(ctx.settings, NAMESPACE, domain)
     if cached is not None:
         return cached
     try:
-        result = await asyncio.wait_for(asyncio.to_thread(_blocking_lookup, domain), timeout=25)
+        limit = ctx.http_timeout or 25
+        result = await asyncio.wait_for(asyncio.to_thread(_blocking_lookup, domain), timeout=limit)
     except TimeoutError:
         return {"note": "whois lookup timed out"}
     except Exception as exc:

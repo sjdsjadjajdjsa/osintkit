@@ -26,6 +26,7 @@ class HttpClient:
 
     def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
         self.settings = settings
+        self._inflight: dict[tuple[str, str], asyncio.Task[httpx.Response]] = {}
         self._own_client = client is None
         self._client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout),
@@ -58,6 +59,7 @@ class HttpClient:
         headers: Mapping[str, str] | None = None,
         accept: str = "application/json",
         empty_on: Iterable[int] = (404,),
+        timeout: float | None = None,
     ) -> httpx.Response:
         return await self._request(
             "GET",
@@ -67,6 +69,7 @@ class HttpClient:
             headers=headers,
             accept=accept,
             empty_on=empty_on,
+            timeout=timeout,
         )
 
     async def post_json(
@@ -76,6 +79,7 @@ class HttpClient:
         namespace: str,
         payload: Mapping[str, Any],
         headers: Mapping[str, str] | None = None,
+        timeout: float | None = None,
     ) -> httpx.Response:
         return await self._request(
             "POST",
@@ -84,6 +88,7 @@ class HttpClient:
             payload=payload,
             headers=headers,
             empty_on=(),
+            timeout=timeout,
         )
 
     async def _request(
@@ -97,6 +102,7 @@ class HttpClient:
         headers: Mapping[str, str] | None = None,
         accept: str = "application/json",
         empty_on: Iterable[int] = (),
+        timeout: float | None = None,
     ) -> httpx.Response:
         key = self._cache_key(url, payload if method != "GET" else params)
         if self.settings.use_cache:
@@ -109,6 +115,46 @@ class HttpClient:
                     request=httpx.Request(method, url),
                 )
 
+        slot = (namespace, key)
+        pending = self._inflight.get(slot)
+        if pending is not None and not pending.done():
+            return await asyncio.shield(pending)
+
+        task = asyncio.ensure_future(
+            self._perform(
+                method,
+                url,
+                namespace=namespace,
+                key=key,
+                params=params,
+                payload=payload,
+                headers=headers,
+                accept=accept,
+                empty_on=empty_on,
+                timeout=timeout,
+            )
+        )
+        self._inflight[slot] = task
+        try:
+            return await task
+        finally:
+            if self._inflight.get(slot) is task:
+                self._inflight.pop(slot, None)
+
+    async def _perform(
+        self,
+        method: str,
+        url: str,
+        *,
+        namespace: str,
+        key: str,
+        params: Mapping[str, Any] | None = None,
+        payload: Mapping[str, Any] | None = None,
+        headers: Mapping[str, str] | None = None,
+        accept: str = "application/json",
+        empty_on: Iterable[int] = (),
+        timeout: float | None = None,
+    ) -> httpx.Response:
         last_error: Exception | None = None
         for attempt in range(1, self.settings.max_attempts + 1):
             try:
@@ -116,10 +162,12 @@ class HttpClient:
                 if headers:
                     request_headers.update(headers)
                 if method == "GET":
-                    response = await self._client.get(url, params=params, headers=request_headers)
+                    response = await self._client.get(
+                        url, params=params, headers=request_headers, timeout=timeout
+                    )
                 else:
                     response = await self._client.post(
-                        url, json=dict(payload or {}), headers=request_headers
+                        url, json=dict(payload or {}), headers=request_headers, timeout=timeout
                     )
             except (httpx.TimeoutException, httpx.TransportError) as exc:
                 last_error = exc

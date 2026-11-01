@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
+import os
 import re
 import time
 import uuid
@@ -13,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import collectors, render, synthesis
+from . import collectors, render, retention, synthesis
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -35,6 +36,23 @@ def _status(progress: Console, settings: Settings, message: str):
     if settings.extra.get("quiet_progress"):
         return contextlib.nullcontext()
     return progress.status(message, spinner="dots")
+
+
+_PRUNED = False
+
+
+def _auto_prune() -> None:
+    global _PRUNED
+    if _PRUNED:
+        return
+    _PRUNED = True
+    raw = os.environ.get("OSINTKIT_RETENTION_DAYS", "30")
+    try:
+        days = int(raw)
+    except ValueError:
+        return
+    if days > 0:
+        retention.prune(days)
 
 
 def new_run_id() -> str:
@@ -108,6 +126,7 @@ async def execute(
 ) -> Outcome:
     started = time.perf_counter()
     progress = Console(stderr=True)
+    _auto_prune()
     try:
         target, target_type = resolve(raw_target, declared_type)
     except TargetParseError as exc:

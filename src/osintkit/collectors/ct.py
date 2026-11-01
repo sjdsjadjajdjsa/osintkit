@@ -40,6 +40,7 @@ async def _query(ctx: Context, query: str, namespace: str) -> list[dict]:
         params={"q": query, "output": "json", "exclude": "expired"},
         accept="application/json",
         empty_on=(404,),
+        timeout=ctx.http_timeout,
     )
     if response.status_code != 200:
         return []
@@ -49,13 +50,21 @@ async def _query(ctx: Context, query: str, namespace: str) -> list[dict]:
         return []
 
 
-@collector("crt_sh_subdomains", ("domain",), "Subdomains from certificate transparency", order=20)
+@collector(
+    "crt_sh_subdomains",
+    ("domain",),
+    "Subdomains from certificate transparency",
+    order=20,
+    timeout=90,
+)
 async def crt_sh_subdomains(ctx: Context) -> list[str]:
     entries = await _query(ctx, f"%.{ctx.target}", "crt")
     return _names(entries, ctx.target.lower())
 
 
-@collector("crt_sh_certificates", ("domain",), "Issued certificates from crt.sh", order=21)
+@collector(
+    "crt_sh_certificates", ("domain",), "Issued certificates from crt.sh", order=21, timeout=90
+)
 async def crt_sh_certificates(ctx: Context) -> list[dict]:
     entries = await _query(ctx, f"%.{ctx.target}", "crt")
     certs = []
@@ -76,7 +85,13 @@ async def crt_sh_certificates(ctx: Context) -> list[dict]:
     return certs
 
 
-@collector("crt_sh_organization", ("company",), "Certificates issued to an organisation", order=20)
+@collector(
+    "crt_sh_organization",
+    ("company",),
+    "Certificates issued to an organisation",
+    order=20,
+    timeout=90,
+)
 async def crt_sh_organization(ctx: Context) -> dict:
     entries = await _query(ctx, f"O=%{quote(ctx.target)}%", "crt")
     domains: dict[str, int] = {}
