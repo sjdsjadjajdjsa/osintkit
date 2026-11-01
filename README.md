@@ -53,13 +53,15 @@ osintkit lookup example.com --only dns_records --skip tcp_ports
 osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
 osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
 osintkit doctor                                  # check key, endpoint, directories
+osintkit schema                                  # JSON schema the model must satisfy
 osintkit prune --days 30                         # delete old cache, logs, reports
 osintkit history --limit 10
 osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
 osintkit collectors
 ```
 
-Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--timeout`,
+Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--max-tokens` (default
+2400), `--timeout`,
 `--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `--resolver` (repeatable, for
 `dns_records`/`passive_subdomains`), `-v` (show raw collector payloads).
 
@@ -90,6 +92,8 @@ Collectors run concurrently and independently. A dead source produces a `failed`
 report instead of aborting the run.
 
 ## Output contract
+
+The schema is printed by `osintkit schema` and enforced with pydantic.
 
 Synthesis returns strict JSON: `summary`, `breaches[]`, `associated_accounts[]`,
 `infrastructure_notes[]`, `subdomains[]`, `risk_level`, `recommendations[]`. It is validated

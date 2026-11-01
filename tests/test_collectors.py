@@ -395,3 +395,63 @@ async def test_collector_timeout_reaches_context(make_context):
     spec = base.Collector(name="t", target_types=("domain",), func=record, timeout=12.5)
     await base.run_collector(spec, make_context())
     assert seen["timeout"] == 12.5
+
+
+@respx.mock
+async def test_github_commit_search_empty_payload(make_context):
+    ctx = make_context("alice@example.com", "email")
+    respx.get(url__startswith="https://api.github.com/search/commits").mock(
+        return_value=httpx.Response(200, json={"total_count": 0, "items": []})
+    )
+    assert await github.github_commit_search(ctx) == {"total": 0, "commits": []}
+
+
+@respx.mock
+async def test_github_user_search_company_query(make_context):
+    ctx = make_context("Acme", "company")
+    route = respx.get(url__startswith="https://api.github.com/search/users").mock(
+        return_value=httpx.Response(200, json={"total_count": 1, "items": [{"login": "acme"}]})
+    )
+    result = await github.github_user_search(ctx)
+    assert result["users"][0]["login"] == "acme"
+    assert "company" in route.calls[0].request.url.params["q"]
+
+
+@respx.mock
+async def test_github_org_repos_not_found(make_context):
+    ctx = make_context("Ghost Ltd", "company")
+    respx.get(url__startswith="https://api.github.com/orgs/").mock(return_value=httpx.Response(404))
+    result = await github.github_org_repos(ctx)
+    assert result["found"] is False
+    assert result["tried"] == ["ghost-ltd", "ghost"]
+
+
+async def test_dns_wildcard_reports_answers(make_context, monkeypatch):
+    ctx = make_context("example.com")
+
+    async def fake_lookup(_ctx, host, rtype):
+        return ["1.2.3.4"]
+
+    monkeypatch.setattr(dns, "_lookup", fake_lookup)
+    result = await dns.dns_wildcard(ctx)
+    assert result["wildcard"] is True
+
+
+def test_dns_formatting_handles_mx_and_txt():
+    class Record:
+        preference = 10
+        exchange = "mail.example.com."
+        strings = (b"v=spf1 ", b"-all")
+
+    assert dns._format("MX", Record()) == "10 mail.example.com."
+    assert dns._format("TXT", Record()) == "v=spf1 -all"
+
+
+async def test_dns_lookup_returns_empty_on_nxdomain(make_context, monkeypatch):
+    ctx = make_context("nope.example")
+
+    async def raise_nxdomain(*args, **kwargs):
+        raise dns.dns.resolver.NXDOMAIN
+
+    monkeypatch.setattr(dns, "_resolver", lambda _ctx: type("R", (), {"resolve": raise_nxdomain})())
+    assert await dns._lookup(ctx, "nope.example", "A") == []

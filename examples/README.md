@@ -23,3 +23,10 @@ Health and housekeeping:
 osintkit doctor
 osintkit prune --days 14 --dry-run
 ```
+
+Inspect the contract the model must satisfy:
+
+```bash
+osintkit schema
+osintkit schema --out analysis.schema.json
+```

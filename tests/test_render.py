@@ -83,3 +83,18 @@ def test_verbose_shows_raw_data(console, text_of):
     text = text_of()
     assert "Raw source data" in text
     assert "xposed_or_not" in text
+
+
+def test_notes_are_rendered(console, text_of):
+    r = report()
+    r.analysis = None
+    r.notes.append("synthesis failed: boom")
+    render.render_report(r, console)
+    assert "synthesis failed: boom" in text_of()
+
+
+def test_notes_in_markdown_without_analysis():
+    r = report()
+    r.analysis = None
+    r.notes.append("synthesis failed: boom")
+    assert "synthesis failed: boom" in render.to_markdown(r)

@@ -112,3 +112,19 @@ def test_history_reads_runs(tmp_path):
     assert runs[0]["run_id"] == "abc"
     assert runs[0]["collectors_ok"] == 1
     assert runs[0]["risk"] == "low"
+
+
+async def test_max_tokens_reaches_synthesis(settings, fake_collector, monkeypatch, console):
+    seen = {}
+
+    async def fake_synth(client, bundle, *, logger=None, max_tokens=2400):
+        seen["max_tokens"] = max_tokens
+        from osintkit.models import Analysis
+
+        return Analysis(summary="s", risk_level="low")
+
+    monkeypatch.setattr(pipeline.synthesis, "synthesize", fake_synth)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    settings.max_tokens = 999
+    await pipeline.execute("example.com", settings, RunLogger("run7"), console)
+    assert seen["max_tokens"] == 999

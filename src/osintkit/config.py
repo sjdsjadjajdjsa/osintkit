@@ -54,6 +54,7 @@ class Settings:
     model: str = DEFAULT_MODEL
     api_key: str | None = None
     temperature: float = DEFAULT_TEMPERATURE
+    max_tokens: int = 2400
     timeout: float = DEFAULT_TIMEOUT
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
     use_cache: bool = True

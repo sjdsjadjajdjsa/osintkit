@@ -179,7 +179,9 @@ async def execute(
                 )
             async with LLMClient(settings, http) as client:
                 with _status(progress, settings, "[cyan]synthesising briefing…[/cyan]"):
-                    report.analysis = await synthesis.synthesize(client, bundle, logger=logger)
+                    report.analysis = await synthesis.synthesize(
+                        client, bundle, logger=logger, max_tokens=settings.max_tokens
+                    )
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")
             logger.event("run_error", error=str(exc))

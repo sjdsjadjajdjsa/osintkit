@@ -40,6 +40,8 @@ def render_report(report: Report, out: Console, *, verbose: bool = False) -> Non
     out.print(_header(report))
     if report.analysis is None:
         out.print("[yellow]No analysis available.[/yellow]")
+        if report.notes:
+            out.print(_bullets("Notes", report.notes, "yellow"))
         if verbose:
             out.print(_raw_data(report.collectors))
         out.print(_coverage(report.collectors))
@@ -88,6 +90,8 @@ def render_report(report: Report, out: Console, *, verbose: bool = False) -> Non
     if analysis.recommendations:
         out.print(_bullets("Recommendations", analysis.recommendations, "green"))
 
+    if report.notes:
+        out.print(_bullets("Notes", report.notes, "yellow"))
     if verbose:
         out.print(_raw_data(report.collectors))
     out.print(_coverage(report.collectors))
@@ -172,6 +176,7 @@ def to_markdown(report: Report) -> str:
     ]
     if analysis is None:
         lines += ["> No analysis available.", ""]
+        _md_list(lines, "Notes", report.notes)
     else:
         lines += ["## Summary", "", analysis.summary or "No summary returned.", ""]
         lines += ["## Breaches", ""]

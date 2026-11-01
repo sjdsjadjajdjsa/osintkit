@@ -55,6 +55,7 @@ def root(
     model: str = typer.Option(DEFAULT_MODEL, "--model", help="Model name sent to the endpoint."),
     api_key: str | None = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
     temperature: float = typer.Option(0.3, "--temperature", min=0.0, max=2.0),
+    max_tokens: int = typer.Option(2400, "--max-tokens", min=256, max=16000),
     timeout: float = typer.Option(30.0, "--timeout", help="HTTP timeout in seconds."),
     max_attempts: int = typer.Option(3, "--max-attempts", min=1, max=6),
     no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the 24h cache."),
@@ -73,6 +74,7 @@ def root(
         model=model,
         api_key=api_key,
         temperature=temperature,
+        max_tokens=max_tokens,
         timeout=timeout,
         max_attempts=max_attempts,
         use_cache=not no_cache,
@@ -443,6 +445,19 @@ def prune(
     out.print(
         f"{verb}: {counts['cache']} cached, {counts['logs']} log, {counts['reports']} report files"
     )
+
+
+@app.command()
+def schema(out: Path | None = typer.Option(None, "--out", "-o", help="Write to a file.")) -> None:
+    """Print the JSON schema the model must satisfy."""
+    from .models import Analysis
+
+    payload = json.dumps(Analysis.model_json_schema(), indent=2)
+    if out:
+        out.write_text(payload + "\n", "utf-8")
+        _console().print(f"[green]schema written[/green] {out}")
+        return
+    print(payload)
 
 
 @app.command("cache")

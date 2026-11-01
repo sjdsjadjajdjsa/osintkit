@@ -269,3 +269,17 @@ def test_cache_reports_disk_usage():
     result = runner.invoke(app, ["cache"])
     assert result.exit_code == 0
     assert "total on disk" in result.output
+
+
+def test_schema_prints_json_schema():
+    result = runner.invoke(app, ["schema"])
+    assert result.exit_code == 0
+    schema = jsonish(result.output)
+    assert set(schema["properties"]) >= {"summary", "breaches", "risk_level"}
+
+
+def test_schema_writes_file(tmp_path):
+    destination = tmp_path / "schema.json"
+    result = runner.invoke(app, ["schema", "--out", str(destination)])
+    assert result.exit_code == 0
+    assert "risk_level" in destination.read_text()
