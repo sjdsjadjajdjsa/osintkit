@@ -163,3 +163,39 @@ def test_cache_clear_reports_count():
     result = runner.invoke(app, ["cache", "--clear"])
     assert result.exit_code == 0
     assert "cleared" in result.output
+
+
+def test_raw_dumps_collected_data(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    result = runner.invoke(app, ["lookup", "--domain", "example.com", "--raw"])
+    assert result.exit_code == 0
+    payload = jsonish(result.output)
+    assert payload["target"] == "example.com"
+    assert payload["results"][0]["collector"] == "fake_source"
+    assert payload["results"][0]["data"] == {"k": "v"}
+
+
+def test_history_show_by_run_id(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    runner.invoke(app, ["lookup", "--domain", "example.com"])
+    run_id = jsonish(runner.invoke(app, ["history", "--json"]).output)[0]["run_id"]
+    replay = runner.invoke(app, ["history", "--show", run_id, "--json"])
+    assert replay.exit_code == 0
+    assert jsonish(replay.output)["target"] == "example.com"
+
+
+def test_history_show_unknown_run(monkeypatch):
+    result = runner.invoke(app, ["history", "--show", "nope"])
+    assert result.exit_code == 1
+    assert "cannot read report" in result.output
+
+
+def test_batch_preserves_order(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\nb.com\nc.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--concurrency", "2"])
+    assert result.exit_code == 0
+    positions = [result.output.index(f"{name}.com ", result.output.index("batch summary"))
+                 for name in ("a", "b", "c")]
+    assert positions == sorted(positions)

@@ -142,6 +142,12 @@ class HttpClient:
                 await self._sleep(attempt, retry_after)
                 continue
 
+            if response.status_code == 403 and _quota_exhausted(response):
+                if attempt >= self.settings.max_attempts:
+                    raise RateLimited(f"{url}: quota exhausted after {attempt} attempts")
+                await self._sleep(attempt, _retry_after(response))
+                continue
+
             if response.status_code >= 400:
                 raise SourceUnavailable(f"{url}: HTTP {response.status_code}")
 
@@ -189,6 +195,10 @@ class HttpClient:
             delay = min(0.5 * (2 ** (attempt - 1)), 8.0)
             delay += random.uniform(0, delay / 2)
         await asyncio.sleep(delay)
+
+
+def _quota_exhausted(response: httpx.Response) -> bool:
+    return response.headers.get("x-ratelimit-remaining") == "0"
 
 
 def _retry_after(response: httpx.Response) -> float | None:

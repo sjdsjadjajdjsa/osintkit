@@ -58,6 +58,7 @@ class Settings:
     use_cache: bool = True
     cache_ttl: int = DEFAULT_CACHE_TTL
     dry_run: bool = False
+    raw: bool = False
     output_json: bool = False
     output_markdown: bool = False
     verbose: bool = False

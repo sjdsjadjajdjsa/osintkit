@@ -158,6 +158,27 @@ def read_runs(limit: int = 20) -> list[dict[str, Any]]:
     return [runs[r] for r in summaries]
 
 
+def find_report_for_run(run_id: str) -> str | None:
+    """Return the archived report path recorded for a run id, if any."""
+    for path in iter_log_files():
+        try:
+            lines = path.read_text("utf-8").splitlines()
+        except OSError:
+            continue
+        for line in lines:
+            try:
+                record = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if record.get("run_id") == run_id and record.get("kind") == "run_end":
+                return record.get("report_path")
+    return None
+
+
+def run_exists(run_id: str) -> bool:
+    return any(run["run_id"] == run_id for run in read_runs(limit=500))
+
+
 def read_report(path: str | Path) -> dict[str, Any] | None:
     try:
         return json.loads(Path(path).read_text("utf-8"))

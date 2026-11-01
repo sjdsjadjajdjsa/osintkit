@@ -91,3 +91,23 @@ async def test_cached_replay_drops_encoding_headers(settings):
         )
         assert await client.get_json(URL, namespace="enc") == {"ok": True}
         assert await client.get_json(URL, namespace="enc") == {"ok": True}
+
+
+@respx.mock
+async def test_github_quota_403_is_retried_as_rate_limit(settings):
+    settings.max_attempts = 2
+    async with HttpClient(settings) as client:
+        respx.get(URL).mock(
+            return_value=httpx.Response(403, headers={"x-ratelimit-remaining": "0"})
+        )
+        with pytest.raises(RateLimited):
+            await client.get_json(URL, namespace="q")
+        assert respx.get(URL).call_count == 2
+
+
+@respx.mock
+async def test_plain_403_is_not_retried(http):
+    respx.get(URL).mock(return_value=httpx.Response(403))
+    with pytest.raises(SourceUnavailable):
+        await http.get_json(URL, namespace="q")
+    assert respx.get(URL).call_count == 1

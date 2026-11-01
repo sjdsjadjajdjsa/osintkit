@@ -17,7 +17,7 @@ from rich.table import Table
 from . import __version__, pipeline, render
 from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, Settings, cache_clear, cache_stats
 from .errors import OsintKitError, TargetParseError
-from .logging_store import RunLogger, read_report, read_runs
+from .logging_store import RunLogger, find_report_for_run, read_report, read_runs, run_exists
 from .targets import VALID_TYPES
 
 app = typer.Typer(
@@ -104,7 +104,10 @@ def _parse_sets(values: list[str] | None) -> set[str] | None:
 
 def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
     report = outcome.report
-    if settings.dry_run and settings.output_json:
+    if settings.raw:
+        bundle = outcome.extra["bundle"]
+        print(json.dumps(bundle.model_dump(mode="json"), indent=2, ensure_ascii=False, default=str))
+    elif settings.dry_run and settings.output_json:
         print(json.dumps(
             {"target": report.target, "target_type": report.target_type,
              "prompt": outcome.extra.get("prompt")},
@@ -120,7 +123,7 @@ def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
         render.render_report(report, out, verbose=settings.verbose)
 
     if outcome.archived:
-        sink = Console(stderr=True) if settings.output_json else out
+        sink = Console(stderr=True) if (settings.output_json or settings.raw) else out
         sink.print(f"[dim]archived: {outcome.archived}[/dim]", highlight=False)
     if outcome.error:
         out.print(Panel(render.escape(outcome.error), title="synthesis failed", border_style="red"))
@@ -139,13 +142,14 @@ def lookup(
     markdown: bool = typer.Option(False, "--markdown", help="Write a Markdown report."),
     out_path: Path | None = typer.Option(None, "--out", "-o", help="Markdown destination."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the prompt, skip the model."),
+    raw: bool = typer.Option(False, "--raw", help="Dump collected data as JSON, skip the model."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
 ) -> None:
     """Look up one target."""
     out = _console()
     settings = _settings(
-        output_json=json_out, output_markdown=markdown, dry_run=dry_run
+        output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw
     )
     if out_path:
         settings.extra["markdown_path"] = str(out_path)
@@ -212,11 +216,14 @@ def batch(
     markdown: bool = typer.Option(False, "--markdown", help="Write one Markdown file per target."),
     out_dir: Path | None = typer.Option(None, "--out", "-o", help="Markdown output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompts, skip the model."),
-    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop at the first error."),
+    fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop reporting at the first error."),
+    concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10,
+                                    help="Targets to run at once."),
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
     settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run)
+    settings.extra["quiet_progress"] = True
     try:
         rows = _read_batch(file)
     except OSError as exc:
@@ -227,19 +234,34 @@ def batch(
         raise typer.Exit(2)
 
     target_dir = Path(out_dir) if out_dir else Path.cwd()
+
+    async def run_all():
+        gate = asyncio.Semaphore(concurrency)
+
+        async def one(item):
+            index, value, declared = item
+            logger = RunLogger(pipeline.new_run_id())
+            async with gate:
+                try:
+                    outcome = await pipeline.execute(
+                        value, settings, logger, out, declared_type=declared
+                    )
+                except TargetParseError as exc:
+                    return index, value, exc
+                return index, value, outcome
+
+        return await asyncio.gather(
+            *(one((i, v, d)) for i, (v, d) in enumerate(rows, start=1))
+        )
+
     reports = []
     failures = 0
-    for index, (raw, declared) in enumerate(rows, start=1):
-        logger = RunLogger(pipeline.new_run_id())
+    for index, value, outcome in asyncio.run(run_all()):
         if not json_out:
-            out.rule(f"[dim]{index}/{len(rows)} · {raw}[/dim]")
-        try:
-            outcome = asyncio.run(
-                pipeline.execute(raw, settings, logger, out, declared_type=declared)
-            )
-        except TargetParseError as exc:
+            out.rule(f"[dim]{index}/{len(rows)} · {value}[/dim]")
+        if isinstance(outcome, TargetParseError):
             failures += 1
-            out.print(f"[red]skipped {raw}: {exc}[/red]")
+            out.print(f"[red]skipped {value}: {outcome}[/red]")
             if fail_fast:
                 break
             continue
@@ -247,14 +269,13 @@ def batch(
         reports.append(report.model_dump(mode="json"))
         if outcome.error:
             failures += 1
-        if json_out:
-            continue
-        if markdown:
-            name = pipeline.default_markdown_path(report.target).name
-            path = pipeline.write_markdown(report, target_dir / name)
-            out.print(f"[green]markdown written[/green] {path}")
-        else:
-            render.render_report(report, out, verbose=settings.verbose)
+        if not json_out:
+            if markdown:
+                name = pipeline.default_markdown_path(report.target).name
+                path = pipeline.write_markdown(report, target_dir / name)
+                out.print(f"[green]markdown written[/green] {path}")
+            else:
+                render.render_report(report, out, verbose=settings.verbose)
         if fail_fast and outcome.error:
             break
 
@@ -280,13 +301,23 @@ def batch(
 @app.command()
 def history(
     limit: int = typer.Option(20, "--limit", "-n", min=1, max=200),
-    show: str | None = typer.Option(None, "--show", help="Replay a stored report by path."),
+    show: str | None = typer.Option(
+        None, "--show", help="Replay a stored report by archive path or run id."
+    ),
     json_out: bool = typer.Option(False, "--json", help="JSON output."),
 ) -> None:
     """Show past runs, or replay one archived report."""
     out = _console()
     if show:
-        payload = read_report(show)
+        target = show
+        if not Path(show).exists():
+            found = find_report_for_run(show)
+            if found:
+                target = found
+        payload = read_report(target)
+        if payload is None and run_exists(show):
+            out.print(f"[red]run {show} has no archived report (dry run or early failure)[/red]")
+            raise typer.Exit(1)
         if payload is None:
             out.print(f"[red]cannot read report {show}[/red]")
             raise typer.Exit(1)
@@ -311,6 +342,7 @@ def history(
         return
 
     table = Table(title="run history", box=box.SIMPLE_HEAVY)
+    table.add_column("run", no_wrap=True)
     table.add_column("started", no_wrap=True)
     table.add_column("target")
     table.add_column("type")
@@ -318,6 +350,7 @@ def history(
     table.add_column("risk")
     for run in runs:
         table.add_row(
+            str(run.get("run_id")),
             str(run.get("started", ""))[:19].replace("T", " "),
             render.escape(str(run.get("target") or "-")),
             str(run.get("target_type") or "-"),
@@ -326,7 +359,7 @@ def history(
             str(run.get("risk") or "-"),
         )
     out.print(table)
-    out.print("[dim]replay one with: osintkit history --show <archived path>[/dim]")
+    out.print("[dim]replay one with: osintkit history --show <run id>[/dim]")
 
 
 @app.command("collectors")

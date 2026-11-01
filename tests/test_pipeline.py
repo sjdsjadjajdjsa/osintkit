@@ -64,6 +64,7 @@ async def test_execute_dry_run_skips_model(settings, fake_collector, monkeypatch
     assert outcome.report.analysis is None
     assert "prompt" in outcome.extra
     assert "defensive OSINT analyst" in outcome.extra["prompt"]
+    assert outcome.archived and outcome.archived.exists()
 
 
 async def test_execute_without_key_reports_cleanly(settings, fake_collector, console):

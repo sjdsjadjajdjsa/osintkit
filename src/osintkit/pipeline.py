@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 import re
 import time
@@ -28,6 +29,12 @@ class Outcome:
     error: str | None = None
     archived: Path | None = None
     extra: dict = field(default_factory=dict)
+
+
+def _status(progress: Console, settings: Settings, message: str):
+    if settings.extra.get("quiet_progress"):
+        return contextlib.nullcontext()
+    return progress.status(message, spinner="dots")
 
 
 def new_run_id() -> str:
@@ -120,11 +127,18 @@ async def execute(
     )
 
     async with HttpClient(settings) as http:
-        with progress.status(f"[cyan]running collectors for {target}…[/cyan]", spinner="dots"):
+        with _status(progress, settings, f"[cyan]running collectors for {target}…[/cyan]"):
             results = await collect(target, target_type, settings, logger, http, only, skip)
         report.collectors = results
 
         bundle = PromptBundle(target=target, target_type=target_type, results=results)
+
+        if settings.raw:
+            report.notes.append("raw output: model not called")
+            report.elapsed_ms = int((time.perf_counter() - started) * 1000)
+            archived = archive_report(report.model_dump(mode="json"))
+            logger.event("run_end", raw=True, report_path=str(archived) if archived else None)
+            return Outcome(report=report, extra={"bundle": bundle}, archived=archived)
 
         if settings.dry_run:
             report.notes.append("dry run: model not called")
@@ -132,8 +146,12 @@ async def execute(
             synthesis_prompt = synthesis.render_prompt(bundle)
             if not settings.output_json:
                 render.print_prompt(synthesis_prompt, console)
-            logger.event("run_end", dry_run=True, prompt=synthesis_prompt)
-            return Outcome(report=report, extra={"prompt": synthesis_prompt})
+            archived = archive_report(report.model_dump(mode="json"))
+            logger.event(
+                "run_end", dry_run=True, prompt=synthesis_prompt,
+                report_path=str(archived) if archived else None,
+            )
+            return Outcome(report=report, extra={"prompt": synthesis_prompt}, archived=archived)
 
         try:
             if not settings.resolved_api_key():
@@ -141,7 +159,7 @@ async def execute(
                     "No API key. Set API_KEY or pass --api-key (dry run works without one)."
                 )
             async with LLMClient(settings, http) as client:
-                with progress.status("[cyan]synthesising briefing…[/cyan]", spinner="dots"):
+                with _status(progress, settings, "[cyan]synthesising briefing…[/cyan]"):
                     report.analysis = await synthesis.synthesize(client, bundle, logger=logger)
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")
