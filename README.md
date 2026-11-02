@@ -12,7 +12,7 @@ briefed by an LLM acting as a defensive analyst, rendered as a colour-coded repo
 search, free breach indexes, paste archives, and public profile pages. It never logs in on your
 behalf and never touches a paid data broker.
 
-![osintkit report showing risk, breaches, and recommendations](docs/demo.svg)
+<img src="docs/demo.svg" alt="osintkit report showing risk, breaches, and recommendations" width="820">
 
 A full trimmed report, including breach and account sections, is in
 [docs/sample-output.md](docs/sample-output.md).
