@@ -97,3 +97,9 @@ def test_empty_collection_still_yields_a_report():
     assert analysis.risk_level == "low"
     assert analysis.breaches == []
     assert analysis.recommendations
+
+
+def test_narrated_summary_wording():
+    analysis = offline.build([], [], "example.com", narrated=True)
+    assert "model returned no summary" in analysis.summary
+    assert "not narrated" not in analysis.summary

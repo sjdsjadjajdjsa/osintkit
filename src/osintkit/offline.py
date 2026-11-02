@@ -142,7 +142,9 @@ def _recommendations(
     return recs
 
 
-def build(results: list[CollectorResult], report_notes: list[str], target: str) -> Analysis:
+def build(
+    results: list[CollectorResult], report_notes: list[str], target: str, *, narrated: bool = False
+) -> Analysis:
     breaches_raw = next((r.data for r in results if r.collector == "breach_index" and r.has_data), [])
     signals = signals_for(breaches_raw)
     accounts = _found_accounts(results)
@@ -158,8 +160,8 @@ def build(results: list[CollectorResult], report_notes: list[str], target: str) 
     failed = [r.collector for r in results if not r.ok and not r.skipped]
 
     summary_parts = [
-        f"Collected public data for {target} from {len(collected)} of "
-        f"{len(results)} sources, with no model call."
+        f"Collected public data for {target} from {len(collected)} of {len(results)} sources"
+        + (", with no model call." if not narrated else "; the model returned no summary.")
     ]
     if signals["breach_count"]:
         summary_parts.append(
@@ -174,7 +176,8 @@ def build(results: list[CollectorResult], report_notes: list[str], target: str) 
         summary_parts.append(f"Failed sources: {', '.join(failed)}.")
     if skipped:
         summary_parts.append(f"Skipped sources: {', '.join(skipped)}.")
-    summary_parts.append("Risk is computed from counts and policy checks, not narrated.")
+    if not narrated:
+        summary_parts.append("Risk is computed from counts and policy checks, not narrated.")
 
     risk = apply_floor("low", signals["risk_floor"])
     if risky or (wildcard and isinstance(mail, dict) and not mail.get("dmarc_present")):

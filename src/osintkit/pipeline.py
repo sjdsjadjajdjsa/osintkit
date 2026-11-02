@@ -224,6 +224,10 @@ async def execute(
                     report.analysis.risk_level = normalise.apply_floor(
                         report.analysis.risk_level, signals.get("risk_floor", "low")
                     )
+                    if not report.analysis.summary.strip():
+                        fallback = offline.build(prompt_results, report.notes, target, narrated=True)
+                        report.analysis.summary = fallback.summary
+                        report.notes.append("summary filled locally: the model returned none")
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")
             logger.event("run_error", error=str(exc))

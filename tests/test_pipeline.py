@@ -194,3 +194,14 @@ async def test_offline_builds_analysis_without_model(settings, fake_collector, m
     assert outcome.report.analysis is not None
     assert outcome.report.model is None
     assert any("offline" in note for note in outcome.report.notes)
+
+
+async def test_empty_summary_is_backfilled(settings, fake_collector, monkeypatch, console):
+    class Empty(FakeLLM):
+        async def chat(self, messages, **kwargs):
+            return json.dumps({**VALID, "summary": "  "})
+
+    monkeypatch.setattr(pipeline, "LLMClient", Empty)
+    outcome = await pipeline.execute("example.com", settings, RunLogger("sum"), console)
+    assert outcome.report.analysis.summary
+    assert any("filled locally" in note for note in outcome.report.notes)
