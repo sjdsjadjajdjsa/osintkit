@@ -163,6 +163,8 @@ def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
         render.print_json(report)
     elif settings.output_markdown:
         destination = Path(settings.extra.get("markdown_path") or pipeline.default_markdown_path(report.target))
+        if destination.is_dir() or str(destination).endswith(("/", os.sep)):
+            destination = destination / pipeline.default_markdown_path(report.target).name
         path = pipeline.write_markdown(report, destination)
         out.print(f"[green]markdown written[/green] {path}")
     else:

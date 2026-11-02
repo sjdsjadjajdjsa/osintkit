@@ -314,3 +314,12 @@ def test_unknown_key_keeps_venice_default(monkeypatch):
     result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
     payload = jsonish(result.output)
     assert payload["base_url"] == "https://api.venice.ai/api/v1"
+
+
+def test_markdown_out_directory_gets_default_filename(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    target_dir = tmp_path / "out"
+    target_dir.mkdir()
+    result = runner.invoke(app, ["lookup", "--domain", "example.com", "--markdown", "-o", str(target_dir)])
+    assert result.exit_code == 0
+    assert (target_dir / "example.com-osint.md").exists()

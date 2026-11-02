@@ -63,9 +63,7 @@ class LLMClient:
             )
         except SourceUnavailable as exc:
             if "HTTP 401" in str(exc) or "HTTP 403" in str(exc):
-                raise SynthesisError(
-                    "API key rejected; run `osintkit doctor --deep` to confirm it"
-                ) from exc
+                raise SynthesisError("API key rejected; run `osintkit doctor --deep` to confirm it") from exc
             raise
         try:
             body = response.json()
