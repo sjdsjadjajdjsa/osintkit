@@ -1,0 +1,38 @@
+name: smoke
+
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  collectors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Install
+        run: |
+          uv venv --python 3.12
+          uv sync --frozen --no-dev
+      - name: Collect against stable targets
+        run: |
+          set -eu
+          for target in example.com cloudflare.com; do
+            .venv/bin/osintkit --no-cache lookup --domain "$target" --raw \
+              --only dns_records,dns_mail_posture,crt_sh_subdomains > "smoke-$target.json"
+            .venv/bin/python - "smoke-$target.json" <<'PY'
+          import json, sys
+
+          payload = json.load(open(sys.argv[1]))
+          results = payload["results"]
+          ok = [r for r in results if r["ok"] and r["data"]]
+          if not ok:
+              print("every collector failed", file=sys.stderr)
+              raise SystemExit(1)
+          print(f"{len(ok)}/{len(results)} collectors returned data")
+          PY
+          done

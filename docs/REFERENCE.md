@@ -91,6 +91,11 @@ root.
 `0` success, `1` synthesis or partial failure, `2` bad input (unknown target, collector, port,
 or argument).
 
+## Scheduled smoke test
+
+`.github/workflows/smoke.yml` runs weekly (and on demand) against two stable domains and fails
+if every collector breaks, so upstream parser rot surfaces without a nightly full run.
+
 ## Publishing
 
 `.github/workflows/publish.yml` builds and uploads to PyPI on a published release, using Trusted
