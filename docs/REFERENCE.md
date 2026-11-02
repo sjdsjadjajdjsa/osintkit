@@ -91,6 +91,11 @@ root.
 `0` success, `1` synthesis or partial failure, `2` bad input (unknown target, collector, port,
 or argument).
 
+## Social preview
+
+`docs/social-preview.png` is a 1280x640 card for the repository. GitHub has no API for it: upload
+it under Settings, General, Social preview.
+
 ## Scheduled smoke test
 
 `.github/workflows/smoke.yml` runs weekly (and on demand) against two stable domains and fails
