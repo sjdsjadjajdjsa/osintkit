@@ -122,11 +122,12 @@ the model fail.
 
 ## Collectors
 
-Two dozen sources across four target types, all free and login-free: HIBP (key), XposedOrNot,
+28 sources across six target types, all free and login-free: HIBP (key), XposedOrNot,
 LeakCheck, Gravatar, crt.sh (subdomains, certificates, organisation search), public DNS
 (A/AAAA/MX/TXT/NS/CNAME plus SPF, DMARC, DKIM, wildcard), passive subdomains, WHOIS, TCP
 connect probes, GitHub (profile, commits, user search, org repos), psbdmp with a Gist fallback,
-grep.app, Hacker News, Stack Exchange, and username presence. The full table is in
+grep.app, Hacker News, Stack Exchange, username presence, Hudson Rock stealer logs,
+libphonenumber metadata, and Blockstream address history. The full table is in
 [docs/REFERENCE.md](docs/REFERENCE.md#collectors) or via `osintkit collectors`.
 
 ## Breach depth
