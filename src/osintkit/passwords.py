@@ -14,6 +14,7 @@ RANGE = "https://api.pwnedpasswords.com/range/"
 
 def digest(password: str) -> tuple[str, str]:
     # SHA-1 is fixed by the Pwned Passwords protocol, not a strength choice.
+    # codeql[py/weak-sensitive-data-hashing]
     sha1 = hashlib.sha1(password.encode("utf-8"), usedforsecurity=False).hexdigest().upper()
     return sha1[:5], sha1[5:]
 

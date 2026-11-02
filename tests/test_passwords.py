@@ -6,6 +6,7 @@ import respx
 from osintkit import passwords
 
 PASSWORD = "hunter2"
+# codeql[py/weak-sensitive-data-hashing]
 SHA = hashlib.sha1(PASSWORD.encode(), usedforsecurity=False).hexdigest().upper()
 
 
