@@ -6,6 +6,21 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.5.0 — 2026-11-02
+
+### Added
+
+- breach rows are enriched with date, exposed fields, domain, and record count from the keyless
+  HIBP and XposedOrNot catalogues
+- `osintkit password` checks Pwned Passwords by SHA-1 prefix; no key, no plaintext sent
+- email lookups also collect the address domain's DNS, mail posture, and WHOIS, marked as derived
+- a failed synthesis now falls back to a locally built report instead of an empty one
+
+### Fixed
+
+- large prompts came back empty on reasoning models: token truncation is detected and retried,
+  and the prompt carries at most 15 breach rows
+
 ## 0.4.0 — 2026-11-02
 
 ### Added

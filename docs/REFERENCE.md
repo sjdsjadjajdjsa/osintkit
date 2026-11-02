@@ -61,6 +61,19 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
 
+## Breach catalogue enrichment
+
+Breach names from free indexes are joined against `haveibeenpwned.com/api/v3/breaches` (keyless
+catalogue) with an XposedOrNot catalogue fallback, cached a week, to add dates, exposed fields,
+domains, and record counts. At most 15 enriched rows go into the prompt; the true count stays in
+`signals`.
+
+## Password checks
+
+`osintkit password [VALUE]` hashes locally, sends only the five-character SHA-1 prefix to
+`api.pwnedpasswords.com`, and reports the count and a commonness rating. Exit code `1` means
+pwned. `--json` for machines. Nothing about the password beyond the prefix leaves the machine.
+
 ## Configuration file
 
 `osintkit init` writes `~/.config/osintkit/config.toml` (or `$XDG_CONFIG_HOME`) with mode 600 in

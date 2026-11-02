@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, diff, doctor, pipeline, render, retention, userconfig
+from . import __version__, diff, doctor, passwords, pipeline, render, retention, userconfig
 from .collectors import REGISTRY
 from .config import (
     DEFAULT_RESOLVERS,
@@ -74,7 +74,7 @@ def root(
     model: str | None = typer.Option(None, "--model", help="Model name (overrides the provider default)."),
     api_key: str | None = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
     temperature: float = typer.Option(0.3, "--temperature", min=0.0, max=2.0),
-    max_tokens: int = typer.Option(2400, "--max-tokens", min=256, max=16000),
+    max_tokens: int = typer.Option(4000, "--max-tokens", min=256, max=16000),
     timeout: float = typer.Option(30.0, "--timeout", help="HTTP timeout in seconds."),
     max_connections: int = typer.Option(16, "--max-connections", min=1, max=64),
     max_attempts: int = typer.Option(3, "--max-attempts", min=1, max=6),
@@ -625,6 +625,50 @@ def init(
             raise typer.Exit(1)
         out.print(f"[green]{endpoint.detail}[/green]")
     out.print("[dim]try: osintkit lookup --domain example.com[/dim]")
+
+
+@app.command()
+def password(
+    value: str | None = typer.Argument(None, help="Password to check; prompt if omitted."),
+    json_out: bool = typer.Option(False, "--json", help="JSON output."),
+) -> None:
+    """Check a password against Pwned Passwords, without sending it."""
+    out = _console()
+    secret = value
+    if not secret:
+        if not sys.stdin.isatty():
+            secret = sys.stdin.readline().rstrip("\n")
+        if not secret:
+            secret = typer.prompt("Password", hide_input=True)
+    if not secret:
+        out.print("[red]no password given[/red]")
+        raise typer.Exit(2)
+
+    settings: Settings = STATE["settings"]  # type: ignore[assignment]
+
+    async def run() -> dict[str, object]:
+        from .http import HttpClient
+
+        async with HttpClient(settings) as http:
+            return await passwords.check(http, secret)
+
+    try:
+        result = asyncio.run(run())
+    except OsintKitError as exc:
+        out.print(f"[red]{exc}[/red]")
+        raise typer.Exit(1) from exc
+
+    if json_out:
+        print(json.dumps(result, indent=2))
+        return
+    if result["pwned"]:
+        out.print(
+            f"[red]pwned[/red] {result['count']:,} times "
+            f"({result['rating']}); still only the first 5 SHA-1 characters left this machine"
+        )
+        raise typer.Exit(1)
+    out.print(f"[green]not seen[/green] in Pwned Passwords (checked by hash prefix {result['prefix']})")
+    out.print("[yellow]absence is not proof of strength; length and uniqueness still matter[/yellow]")
 
 
 @app.command("config")

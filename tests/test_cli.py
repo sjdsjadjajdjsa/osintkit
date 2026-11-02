@@ -618,3 +618,28 @@ def test_flag_beats_stored_config(monkeypatch, xdg):
     monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
     result = runner.invoke(app, ["--model", "flag-model", "lookup", "--domain", "a.com", "--json"])
     assert jsonish(result.output)["model"] == "flag-model"
+
+
+def test_password_command_hit_and_miss(monkeypatch):
+    import httpx
+    import respx
+
+    from osintkit import passwords
+
+    prefix, suffix = passwords.digest("hunter2")
+    miss_prefix = passwords.digest("hunter3")[0]
+    with respx.mock:
+        respx.get(f"https://api.pwnedpasswords.com/range/{prefix}").mock(
+            return_value=httpx.Response(200, text=f"{suffix}:5")
+        )
+        hit = runner.invoke(app, ["password", "hunter2"])
+    assert hit.exit_code == 1
+    assert "pwned" in hit.output
+
+    with respx.mock:
+        respx.get(f"https://api.pwnedpasswords.com/range/{miss_prefix}").mock(
+            return_value=httpx.Response(200, text="")
+        )
+        miss = runner.invoke(app, ["password", "hunter3", "--json"])
+    assert miss.exit_code == 0
+    assert jsonish(miss.output)["pwned"] is False

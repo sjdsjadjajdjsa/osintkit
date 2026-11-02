@@ -74,10 +74,14 @@ def test_extract_content_surfaces_api_error():
         extract_content({"error": {"message": "quota exceeded"}})
 
 
-@pytest.mark.parametrize("body", [{}, {"choices": []}, {"choices": [{}]}, "nope"])
+@pytest.mark.parametrize("body", [{}, {"choices": []}, "nope"])
 def test_extract_content_rejects_bad_shapes(body):
     with pytest.raises(SynthesisError):
         extract_content(body)
+
+
+def test_extract_content_allows_empty_message():
+    assert extract_content({"choices": [{}]}) == ""
 
 
 @respx.mock
@@ -109,3 +113,31 @@ async def test_keyless_provider_sends_no_auth_header(settings):
     async with LLMClient(settings) as llm:
         assert await llm.chat([{"role": "user", "content": "x"}]) == "ok"
     assert "authorization" not in route.calls[0].request.headers
+
+
+@respx.mock
+async def test_truncated_empty_reply_is_retried_with_more_tokens(settings):
+    route = respx.post(URL).mock(
+        side_effect=[
+            httpx.Response(200, json={"choices": [{"finish_reason": "length", "message": {"content": ""}}]}),
+            httpx.Response(200, json={"choices": [{"finish_reason": "stop", "message": {"content": "ok"}}]}),
+        ]
+    )
+    async with client(settings) as llm:
+        assert await llm.chat([{"role": "user", "content": "x"}], max_tokens=2400) == "ok"
+    import json as _json
+
+    budgets = [_json.loads(call.request.content)["max_tokens"] for call in route.calls]
+    assert budgets == [2400, 4800]
+
+
+@respx.mock
+async def test_truncation_without_content_gives_up(settings):
+    respx.post(URL).mock(
+        return_value=httpx.Response(
+            200, json={"choices": [{"finish_reason": "length", "message": {"content": ""}}]}
+        )
+    )
+    async with client(settings) as llm:
+        with pytest.raises(SynthesisError, match="ran out of tokens"):
+            await llm.chat([{"role": "user", "content": "x"}], max_tokens=8000)

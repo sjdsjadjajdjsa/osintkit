@@ -34,7 +34,7 @@ class LLMClient:
         messages: Sequence[Mapping[str, str]],
         *,
         temperature: float | None = None,
-        max_tokens: int = 2400,
+        max_tokens: int = 4000,
         response_format: Mapping[str, Any] | None = None,
     ) -> str:
         api_key = self.settings.resolved_api_key()
@@ -51,6 +51,15 @@ class LLMClient:
         if response_format:
             payload["response_format"] = dict(response_format)
 
+        content, finish = await self._post(payload, api_key)
+        if finish == "length" and not content and max_tokens < 8000:
+            payload["max_tokens"] = min(8000, max_tokens * 2)
+            content, finish = await self._post(payload, api_key)
+        if finish == "length" and not content:
+            raise SynthesisError("model ran out of tokens before answering")
+        return content
+
+    async def _post(self, payload: dict[str, Any], api_key: str | None) -> tuple[str, str | None]:
         try:
             response = await self._http.post_json(
                 self.endpoint(),
@@ -69,7 +78,17 @@ class LLMClient:
             body = response.json()
         except ValueError as exc:
             raise SynthesisError("Model endpoint returned non-JSON") from exc
-        return extract_content(body)
+        return extract_content(body), extract_finish(body)
+
+
+def extract_finish(body: Any) -> str | None:
+    if not isinstance(body, dict):
+        return None
+    choices = body.get("choices")
+    if not isinstance(choices, list) or not choices:
+        return None
+    finish = choices[0].get("finish_reason")
+    return finish if isinstance(finish, str) else None
 
 
 def extract_content(body: Any) -> str:
@@ -86,6 +105,6 @@ def extract_content(body: Any) -> str:
     if isinstance(content, list):
         parts = [c.get("text", "") for c in content if isinstance(c, dict)]
         content = "".join(parts)
-    if not isinstance(content, str) or not content.strip():
-        raise SynthesisError("Model returned empty content")
+    if not isinstance(content, str):
+        return ""
     return content

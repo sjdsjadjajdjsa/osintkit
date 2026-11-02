@@ -18,6 +18,14 @@ VALID = {
 }
 
 
+@pytest.fixture(autouse=True)
+async def no_catalogue(monkeypatch):
+    async def empty(_http):
+        return {}
+
+    monkeypatch.setattr(pipeline.catalogue, "fetch", empty)
+
+
 @pytest.fixture
 def fake_collector(monkeypatch):
     async def fake(ctx):
@@ -158,7 +166,7 @@ async def test_duplicate_breaches_are_merged_before_prompting(settings, monkeypa
     assert "breach_index" in prompt["user"]
     assert prompt["user"].count('"name": "Acme"') == 1
     assert '"sources": [' in prompt["user"]
-    assert [r.collector for r in outcome.report.collectors] == ["hibp_breaches", "xposed_or_not"]
+    assert [r.collector for r in outcome.report.collectors][:2] == ["hibp_breaches", "xposed_or_not"]
 
 
 async def test_risk_floor_overrides_a_timid_model(settings, monkeypatch, console):
@@ -205,3 +213,35 @@ async def test_empty_summary_is_backfilled(settings, fake_collector, monkeypatch
     outcome = await pipeline.execute("example.com", settings, RunLogger("sum"), console)
     assert outcome.report.analysis.summary
     assert any("filled locally" in note for note in outcome.report.notes)
+
+
+async def test_failed_synthesis_still_yields_a_local_report(settings, fake_collector, monkeypatch, console):
+    class Broken(FakeLLM):
+        async def chat(self, messages, **kwargs):
+            raise SynthesisError("no dice")
+
+    monkeypatch.setattr(pipeline, "LLMClient", Broken)
+    outcome = await pipeline.execute("example.com", settings, RunLogger("fb"), console)
+    assert outcome.error == "no dice"
+    assert outcome.report.analysis is not None
+    assert any("built locally" in note for note in outcome.report.notes)
+
+
+async def test_email_pulls_its_domain(settings, monkeypatch, console):
+    calls = []
+
+    async def fake(ctx):
+        calls.append((ctx.target, ctx.target_type))
+        return {"A": ["1.2.3.4"]}
+
+    monkeypatch.setattr(
+        base,
+        "REGISTRY",
+        [base.Collector(name="dns_records", target_types=("domain",), func=fake)],
+    )
+    monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    outcome = await pipeline.execute("alice@example.com", settings, RunLogger("dom"), console)
+    assert ("example.com", "domain") in calls
+    derived = [c for c in outcome.report.collectors if c.note == "derived from the email domain"]
+    assert derived and derived[0].ok

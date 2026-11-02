@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import collectors, normalise, offline, render, retention, synthesis
+from . import catalogue, collectors, normalise, offline, render, retention, synthesis
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -158,9 +158,29 @@ async def execute(
     async with HttpClient(settings) as http:
         with _status(progress, settings, f"[cyan]running collectors for {target}…[/cyan]"):
             results = await collect(target, target_type, settings, logger, http, only, skip)
+            if target_type == "email" and "@" in target:
+                derived = target.split("@", 1)[1].lower()
+                domain_ctx = collectors.Context(
+                    target=derived, target_type="domain", settings=settings, http=http
+                )
+                for name in ("dns_records", "dns_mail_posture", "whois_registration"):
+                    spec = next((c for c in collectors.REGISTRY if c.name == name), None)
+                    if spec is None or (only and name not in only) or (skip and name in skip):
+                        continue
+                    extra = await collectors.run_collector(spec, domain_ctx)
+                    extra.note = "derived from the email domain"
+                    results.append(extra)
         report.collectors = results
 
-        prompt_results, duplicates = normalise.merge_breaches(results)
+        if target_type == "email":
+            try:
+                known = await catalogue.fetch(http)
+            except Exception:
+                known = {}
+        else:
+            known = {}
+
+        prompt_results, duplicates = normalise.merge_breaches(results, known)
         if duplicates:
             report.notes.append(f"{duplicates} duplicate breach records were merged across sources")
             logger.event("breaches_merged", duplicates=duplicates)
@@ -230,7 +250,13 @@ async def execute(
                         report.notes.append("summary filled locally: the model returned none")
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")
+            report.notes.append("report built locally instead")
             logger.event("run_error", error=str(exc))
+            report.model = None
+            report.analysis = offline.build(prompt_results, report.notes, target, narrated=True)
+            report.analysis.risk_level = normalise.apply_floor(
+                report.analysis.risk_level, signals.get("risk_floor", "low")
+            )
             report.elapsed_ms = int((time.perf_counter() - started) * 1000)
             path = archive_report(report.model_dump(mode="json"))
             return Outcome(report=report, error=str(exc), archived=path)

@@ -11,6 +11,7 @@ BREACH_SOURCES = frozenset({"hibp_breaches", "xposed_or_not", "leakcheck_public"
 KEY_RE = re.compile(r"[^a-z0-9]+")
 CREDENTIAL_RE = re.compile(r"pass|hash|credential|secret|token|api[ _-]?key", re.I)
 SEVERITY = ("low", "medium", "high")
+MAX_PROMPT_BREACHES = 15
 
 
 def signals_for(merged: list[dict[str, Any]]) -> dict[str, Any]:
@@ -66,7 +67,10 @@ def _records(result: CollectorResult) -> list[dict[str, Any]]:
     return []
 
 
-def merge_breaches(results: list[CollectorResult]) -> tuple[list[CollectorResult], int]:
+def merge_breaches(
+    results: list[CollectorResult],
+    catalogue: dict[str, dict[str, Any]] | None = None,
+) -> tuple[list[CollectorResult], int]:
     """Merge duplicate breach names across sources.
 
     Returns the results to prompt with (breach sources replaced by one index)
@@ -88,18 +92,23 @@ def merge_breaches(results: list[CollectorResult]) -> tuple[list[CollectorResult
             if not name:
                 continue
             key = _key(name)
+            known = (catalogue or {}).get(key) or {}
+            types = set(_strings(entry.get("data_types"))) or set(known.get("data_types") or [])
+            date = entry.get("date") or known.get("date")
             existing = merged.get(key)
             if existing is None:
                 merged[key] = {
                     "name": name,
-                    "date": entry.get("date"),
-                    "data_types": set(_strings(entry.get("data_types"))),
+                    "date": date,
+                    "data_types": types,
                     "sources": {source},
+                    "domain": known.get("domain"),
+                    "pwn_count": known.get("pwn_count"),
                 }
                 continue
             duplicates += 1
-            if not existing["date"] and entry.get("date"):
-                existing["date"] = entry["date"]
+            if not existing["date"] and date:
+                existing["date"] = date
             existing["data_types"].update(_strings(entry.get("data_types")))
             existing["sources"].add(source)
 
@@ -110,13 +119,16 @@ def merge_breaches(results: list[CollectorResult]) -> tuple[list[CollectorResult
         {
             "name": item["name"],
             "date": item["date"],
-            "data_types": sorted(item["data_types"]),
+            "data_types": sorted(item["data_types"])[:8],
             "sources": sorted(item["sources"]),
             "source": ", ".join(sorted(item["sources"])),
+            "domain": item.get("domain"),
+            "pwn_count": item.get("pwn_count"),
         }
         for item in merged.values()
     ]
     rendered.sort(key=lambda item: (-len(item["data_types"]), item["name"].lower()))
+    rendered = rendered[:MAX_PROMPT_BREACHES]
 
     index = CollectorResult(
         collector="breach_index",

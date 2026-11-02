@@ -71,6 +71,7 @@ Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts G
 | `lookup` | One target, one report (`--email`, `--username`, `--domain`, `--company`) |
 | `batch` | A CSV of targets, run concurrently, reported in order |
 | `diff` | What changed between two archived runs |
+| `password` | Is a password in Pwned Passwords (free, no key, hash-prefix only) |
 | `history` | Past runs, replayable by id |
 | `doctor` | Key, endpoint, and directory checks (`--deep` verifies auth) |
 | `collectors` | Every collector and what it touches |
@@ -100,8 +101,11 @@ target -> type detection -> collectors (parallel, cached, retried)
 Collectors degrade to a logged gap, never a dead run; a report is produced even when sources or
 the model fail.
 
-- **Merged breaches.** Three indexes listing one incident collapse into one row with every
-  source and the earliest date.
+- **Merged, enriched breaches.** Records collapse into one row per incident, keeping every
+  source and the earliest date, then pick up dates and exposed-field lists from the public HIBP
+  and XposedOrNot catalogues. Those catalogues are free; only HIBP *account* checks need a key.
+- **Email domains follow the address.** An email lookup also checks the domain's DNS, mail
+  posture, and WHOIS, marked as derived.
 - **Risk floor.** Breach count and credential types set a floor the model may exceed but never
   undercut.
 - **Cached everything.** 24h default, shorter for volatile sources; repeat prompts cost nothing.
@@ -115,6 +119,17 @@ LeakCheck, Gravatar, crt.sh (subdomains, certificates, organisation search), pub
 connect probes, GitHub (profile, commits, user search, org repos), psbdmp with a Gist fallback,
 grep.app, Hacker News, Stack Exchange, and username presence. The full table is in
 [docs/REFERENCE.md](docs/REFERENCE.md#collectors) or via `osintkit collectors`.
+
+## Breach depth
+
+Breach name lists are free; breach *metadata* is what makes them useful. Every row is joined
+against the public HIBP and XposedOrNot catalogues for date, exposed fields, and record count, so
+the report can say "LinkedIn, 2021-06, emails and password hashes" instead of a bare name. Add a
+`HIBP_API_KEY` (about $4/month) to get per-account membership with the same metadata, plus pastes.
+
+Passwords are checked separately with `osintkit password`: Pwned Passwords covers hundreds of
+millions of leaked passwords, needs no key, and only the first five SHA-1 characters leave the
+machine.
 
 ## Safety and legality
 

@@ -62,7 +62,7 @@ async def test_run_survives_wrapped_code_fence(settings, monkeypatch, console):
 def test_settings_defaults_match_spec():
     settings = Settings()
     assert settings.temperature == 0.3
-    assert settings.max_tokens == 2400
+    assert settings.max_tokens == 4000
     assert settings.base_url == "https://api.venice.ai/api/v1"
     assert settings.model == "deepseek-v4-1-flash"
     assert settings.max_attempts == 3
