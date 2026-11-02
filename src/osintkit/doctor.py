@@ -101,9 +101,7 @@ def collect_checks(settings: Settings) -> list[Check]:
     elif key:
         key_check = Check("api key", "ok", f"from {source}")
     else:
-        key_check = Check(
-            "api key", "warn", f"no key for {settings.provider}; set one or use --offline"
-        )
+        key_check = Check("api key", "warn", f"no key for {settings.provider}; set one or use --offline")
     checks = [
         Check("provider", "ok", settings.provider),
         key_check,
