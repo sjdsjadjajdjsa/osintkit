@@ -17,6 +17,7 @@ Everything the README leaves out: every flag, every collector, storage, and fail
 | `tcp_ports` | domain | local TCP connect probes on common ports | no |
 | `github_profile`, `github_commit_search`, `github_user_search`, `github_org_repos` | username / email / company | GitHub public API | token optional |
 | `psbdmp_search`, `code_mentions` | email / username / domain | psbdmp (GitHub Gist fallback), grep.app | no |
+| `hackertarget_hostsearch` | domain | HackerTarget passive DNS | no |
 | `hn_mentions`, `stackoverflow_mentions` | all | public search APIs | no |
 | `username_presence` | username | public profile URLs that 404 for unknown handles | no |
 
@@ -35,7 +36,7 @@ osintkit --base-url https://gateway.internal/v1 --model house-model ...
 
 | `--provider` | Endpoint | Default model | Auto-selected by |
 | --- | --- | --- | --- |
-| `venice` (default) | `api.venice.ai/api/v1` | see `osintkit --help` | anything else |
+| `venice` (default) | `api.venice.ai/api/v1` | `deepseek-v4-1-flash` | anything else |
 | `openrouter` | `openrouter.ai/api/v1` | `deepseek/deepseek-v4.1-flash-1017` | `sk-or-` key |
 | `openai` | `api.openai.com/v1` | `gpt-4.1-mini` | `sk-proj-` key |
 

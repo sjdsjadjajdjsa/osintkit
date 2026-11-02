@@ -98,7 +98,7 @@ the model fail.
 
 ## Collectors
 
-Twenty sources across four target types, all free and login-free: HIBP (key), XposedOrNot,
+Two dozen sources across four target types, all free and login-free: HIBP (key), XposedOrNot,
 LeakCheck, Gravatar, crt.sh (subdomains, certificates, organisation search), public DNS
 (A/AAAA/MX/TXT/NS/CNAME plus SPF, DMARC, DKIM, wildcard), passive subdomains, WHOIS, TCP
 connect probes, GitHub (profile, commits, user search, org repos), psbdmp with a Gist fallback,
