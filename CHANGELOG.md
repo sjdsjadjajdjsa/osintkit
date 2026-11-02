@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.10.0 — 2026-11-02
+
+### Added
+
+- Windows and macOS support: config under `APPDATA` or Application Support, notifications via
+  PowerShell toast or `osascript`, CI on both
+- `batch --limit` (default 100) refusing oversized files unless raised or set to 0
+
 ## 0.9.0 — 2026-11-02
 
 ### Added

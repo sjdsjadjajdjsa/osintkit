@@ -37,7 +37,7 @@ uv tool install osintkit
 ```
 
 Every [release](https://github.com/sjdsjadjajdjsa/osintkit/releases) also carries a wheel with
-checksums, and `pip install -e .` works from a clone. Python 3.12+ only.
+checksums, and `pip install -e .` works from a clone. Linux, macOS, and Windows; Python 3.12+.
 
 ## Quick start
 
