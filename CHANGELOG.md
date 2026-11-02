@@ -6,6 +6,21 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.1.1 — 2026-11-02
+
+### Added
+
+- `--provider` presets (`venice`, `openrouter`, `openai`) chosen from a key prefix
+- `collectors --json` metadata for scripting
+- weekly smoke workflow and a social preview card
+- opt-in PyPI publishing through Trusted Publishing
+
+### Changed
+
+- default Venice model is the plain `deepseek-v4-1-flash` alias
+- the README demo image no longer names the model
+- CI enforces formatting and 85% coverage
+
 ### Added
 
 - `diff` command comparing two archived runs: risk direction, breach and subdomain deltas,

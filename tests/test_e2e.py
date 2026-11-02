@@ -77,3 +77,11 @@ async def test_report_carries_schema_version(settings, monkeypatch, console):
     settings.dry_run = True
     outcome = await pipeline.execute("alice@example.com", settings, RunLogger("ver"), console)
     assert outcome.report.model_dump()["schema_version"] == "1"
+
+
+def test_version_is_semver():
+    import re
+
+    from osintkit import __version__
+
+    assert re.fullmatch(r"\d+\.\d+\.\d+", __version__)

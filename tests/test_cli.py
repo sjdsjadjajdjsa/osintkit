@@ -77,8 +77,10 @@ def test_help_lists_commands():
 
 
 def test_version():
+    from osintkit import __version__
+
     result = runner.invoke(app, ["--version"])
-    assert "0.1.0" in result.output
+    assert __version__ in result.output
 
 
 def test_dry_run_needs_no_key():
