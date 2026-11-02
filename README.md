@@ -38,6 +38,9 @@ export API_KEY=...   # required for synthesis
 | `HIBP_API_KEY` | enables the Have I Been Pwned collectors; without it they are skipped with a note |
 | `GITHUB_TOKEN` | raises GitHub rate limits from 60/h to 5000/h |
 
+The endpoint and model are inferred from a recognisable key prefix (`sk-or-` selects OpenRouter
+and `deepseek/deepseek-v4.1-flash-1017`); explicit `--base-url`/`--model` always win.
+
 Every other source works with no credentials. `--dry-run` needs no key at all.
 
 ## Usage
@@ -117,7 +120,8 @@ the host answers. Exit code is `1` when a check fails.
 ```
 
 Cache lifetime is 24 hours by default. DNS, mail-posture, wildcard, port, and subdomain
-results expire after 1 hour and profile-presence checks after 6, because those move fastest.
+results expire after 1 hour, certificate-transparency results and profile-presence checks after
+6, because those move fastest.
 `--cache-ttl` and `--no-cache` override both.
 
 Old files are pruned automatically at run start when `OSINTKIT_RETENTION_DAYS` is set

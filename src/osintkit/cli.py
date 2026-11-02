@@ -6,6 +6,7 @@ import asyncio
 import csv
 import ipaddress
 import json
+import os
 import sys
 from dataclasses import asdict
 from pathlib import Path
@@ -17,7 +18,14 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import __version__, doctor, pipeline, render, retention
-from .config import DEFAULT_BASE_URL, DEFAULT_MODEL, Settings, cache_clear, cache_stats
+from .config import (
+    DEFAULT_BASE_URL,
+    DEFAULT_MODEL,
+    Settings,
+    cache_clear,
+    cache_stats,
+    preset_for,
+)
 from .errors import OsintKitError, TargetParseError
 from .logging_store import RunLogger, find_report_for_run, read_report, read_runs, run_exists
 from .targets import VALID_TYPES
@@ -51,8 +59,10 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def root(
-    base_url: str = typer.Option(DEFAULT_BASE_URL, "--base-url", help="OpenAI-compatible base URL."),
-    model: str = typer.Option(DEFAULT_MODEL, "--model", help="Model name sent to the endpoint."),
+    base_url: str | None = typer.Option(
+        None, "--base-url", help="OpenAI-compatible base URL (inferred from the key prefix)."
+    ),
+    model: str | None = typer.Option(None, "--model", help="Model name (inferred from the key prefix)."),
     api_key: str | None = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
     temperature: float = typer.Option(0.3, "--temperature", min=0.0, max=2.0),
     max_tokens: int = typer.Option(2400, "--max-tokens", min=256, max=16000),
@@ -72,9 +82,11 @@ def root(
         is_eager=True,
     ),
 ) -> None:
+    effective_key = api_key or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
+    preset = preset_for(effective_key)
     settings = Settings(
-        base_url=base_url,
-        model=model,
+        base_url=base_url or (preset[0] if preset else DEFAULT_BASE_URL),
+        model=model or (preset[1] if preset else DEFAULT_MODEL),
         api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,

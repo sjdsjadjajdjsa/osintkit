@@ -8,6 +8,7 @@ from .. import errors
 from .base import Context, collector
 
 HIBP = "https://haveibeenpwned.com/api/v3"
+MAX_LISTED = 80
 
 
 def _summarise_hibp(entries: list[dict]) -> list[dict]:
@@ -100,6 +101,7 @@ async def xposed_or_not(ctx: Context) -> dict:
     except ValueError:
         return {"found": 0, "breaches": []}
     raw = body.get("breaches") or []
+    total_found = sum(len(item) if isinstance(item, list) else 1 for item in raw)
     names: list[str] = []
     for item in raw:
         if isinstance(item, list):
@@ -123,7 +125,11 @@ async def xposed_or_not(ctx: Context) -> dict:
             )
     if not breaches:
         breaches = [{"name": name, "source": "xposedornot"} for name in names]
-    return {"found": len(breaches), "breaches": breaches}
+    return {
+        "found": max(total_found, len(breaches)),
+        "listed": len(breaches[:MAX_LISTED]),
+        "breaches": breaches[:MAX_LISTED],
+    }
 
 
 @collector("leakcheck_public", ("email",), "LeakCheck public (free tier)", order=13)

@@ -20,6 +20,8 @@ authorised research.
 
 Rules:
 - Cite the supplied source name in every breach entry. Mark dates as found; use null when unknown.
+- If a source reports more breaches than it listed, say so and keep the 15 most material, ordering
+  credential-bearing and recent incidents first.
 - Distinguish confirmed findings from plausible inference in the summary and notes.
 - Risk level reflects exposure only: high means credential-bearing breaches or a wide,
   live attack surface.

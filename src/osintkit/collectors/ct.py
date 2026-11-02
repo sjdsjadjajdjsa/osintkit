@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import re
 from urllib.parse import quote
 
 from .base import Context, collector
@@ -13,6 +15,19 @@ def _entries(body: object) -> list[dict]:
     if not isinstance(body, list):
         return []
     return [e for e in body if isinstance(e, dict)]
+
+
+def _parse(response: object) -> list[dict]:
+    """crt.sh sometimes wraps JSON in an HTML header block."""
+    text = getattr(response, "text", "").strip()
+    if text.startswith("[BEGIN_HEADERS]"):
+        text = text.split("[END_HEADERS]", 1)[-1].replace("<BR>", "").strip()
+    if not text.startswith(("[", "{")):
+        return []
+    try:
+        return _entries(json.loads(text))
+    except ValueError:
+        return []
 
 
 def _names(entries: list[dict], domain: str) -> list[str]:
@@ -44,10 +59,7 @@ async def _query(ctx: Context, query: str, namespace: str) -> list[dict]:
     )
     if response.status_code != 200:
         return []
-    try:
-        return _entries(response.json())
-    except ValueError:
-        return []
+    return _parse(response)
 
 
 @collector(
@@ -56,6 +68,7 @@ async def _query(ctx: Context, query: str, namespace: str) -> list[dict]:
     "Subdomains from certificate transparency",
     order=20,
     timeout=90,
+    ttl=21600,
 )
 async def crt_sh_subdomains(ctx: Context) -> list[str]:
     entries = await _query(ctx, f"%.{ctx.target}", "crt")
@@ -83,15 +96,19 @@ async def crt_sh_certificates(ctx: Context) -> list[dict]:
     return certs
 
 
-@collector(
-    "crt_sh_organization",
-    ("company",),
-    "Certificates issued to an organisation",
-    order=20,
-    timeout=90,
-)
-async def crt_sh_organization(ctx: Context) -> dict:
-    entries = await _query(ctx, f"O=%{quote(ctx.target)}%", "crt")
+def _company_domains(company: str) -> list[str]:
+    """Guess likely apex domains from a company name."""
+    slug = re.sub(r"[^a-z0-9]+", "", company.lower())
+    slug = re.sub(r"(inc|llc|ltd|limited|gmbh|corp|corporation|plc)$", "", slug)
+    candidates = []
+    for suffix in (".com", ".net", ".io"):
+        candidate = slug + suffix
+        if len(slug) >= 2 and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
+def _summarise(entries: list[dict]) -> dict:
     domains: dict[str, int] = {}
     for entry in entries:
         for name in (entry.get("name_value") or "").splitlines():
@@ -110,4 +127,39 @@ async def crt_sh_organization(ctx: Context) -> dict:
             }
             for e in entries[:20]
         ],
+    }
+
+
+@collector(
+    "crt_sh_organization",
+    ("company",),
+    "Certificates issued to an organisation",
+    order=20,
+    timeout=90,
+    ttl=21600,
+)
+async def crt_sh_organization(ctx: Context) -> dict:
+    entries = await _query(ctx, f"O={quote(ctx.target)}", "crt")
+    if entries:
+        return {**_summarise(entries), "method": "organization match"}
+
+    entries = []
+    matched: list[str] = []
+    for domain in _company_domains(ctx.target):
+        found = await _query(ctx, f"%.{domain}", "crt")
+        if found:
+            entries.extend(found)
+            matched.append(domain)
+        if len(entries) > 400:
+            break
+    if not entries:
+        return {
+            **_summarise([]),
+            "method": "no organization match",
+            "note": "crt.sh had no O= matches and the guessed domains were empty",
+        }
+    return {
+        **_summarise(entries),
+        "method": "guessed domain identity",
+        "matched_domains": matched,
     }

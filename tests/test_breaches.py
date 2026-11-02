@@ -61,3 +61,16 @@ async def test_xposed_error_status_is_empty(make_context):
     ctx = make_context("alice@example.com", "email")
     respx.get(url__startswith="https://api.xposedornot.com/").mock(return_value=httpx.Response(422))
     assert await breaches.xposed_or_not(ctx) == {"found": 0, "breaches": []}
+
+
+@respx.mock
+async def test_xposed_caps_the_listed_breaches(make_context):
+    ctx = make_context("alice@example.com", "email")
+    names = [f"B{index}" for index in range(120)]
+    respx.get(url__startswith="https://api.xposedornot.com/").mock(
+        return_value=httpx.Response(200, json={"breaches": [names]})
+    )
+    result = await breaches.xposed_or_not(ctx)
+    assert result["found"] == 120
+    assert result["listed"] == breaches.MAX_LISTED
+    assert len(result["breaches"]) == breaches.MAX_LISTED

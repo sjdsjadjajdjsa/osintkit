@@ -19,6 +19,20 @@ DEFAULT_TIMEOUT = 30.0
 DEFAULT_CACHE_TTL = 24 * 60 * 60
 DEFAULT_RESOLVERS = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
 
+PROVIDER_PRESETS: dict[str, tuple[str, str]] = {
+    "sk-or-": ("https://openrouter.ai/api/v1", "deepseek/deepseek-v4.1-flash-1017"),
+}
+
+
+def preset_for(api_key: str | None) -> tuple[str, str] | None:
+    """Infer the endpoint and model from a recognisable key prefix."""
+    if not api_key:
+        return None
+    for prefix, preset in PROVIDER_PRESETS.items():
+        if api_key.startswith(prefix):
+            return preset
+    return None
+
 
 def app_home() -> Path:
     override = os.environ.get(APP_HOME_ENV)

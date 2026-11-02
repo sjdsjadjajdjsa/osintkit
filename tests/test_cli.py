@@ -284,3 +284,33 @@ def test_schema_writes_file(tmp_path):
     result = runner.invoke(app, ["schema", "--out", str(destination)])
     assert result.exit_code == 0
     assert "risk_level" in destination.read_text()
+
+
+def test_openrouter_key_selects_preset_endpoint(monkeypatch):
+    monkeypatch.setenv("API_KEY", "sk-or-v1-abc123")
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    payload = jsonish(result.output)
+    assert payload["base_url"] == "https://openrouter.ai/api/v1"
+    assert payload["model"] == "deepseek/deepseek-v4.1-flash-1017"
+
+
+def test_explicit_endpoint_beats_preset(monkeypatch):
+    monkeypatch.setenv("API_KEY", "sk-or-v1-abc123")
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(
+        app,
+        ["--base-url", "https://proxy.test/v1", "--model", "m", "lookup", "--domain", "a.com", "--json"],
+    )
+    payload = jsonish(result.output)
+    assert payload["base_url"] == "https://proxy.test/v1"
+    assert payload["model"] == "m"
+
+
+def test_unknown_key_keeps_venice_default(monkeypatch):
+    monkeypatch.setenv("API_KEY", "sk-venice-abc")
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    payload = jsonish(result.output)
+    assert payload["base_url"] == "https://api.venice.ai/api/v1"
