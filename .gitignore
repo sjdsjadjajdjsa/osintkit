@@ -8,3 +8,5 @@ build/
 .ruff_cache/
 .coverage
 htmlcov/
+.crush/
+DS_Store
