@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.11.0 — 2026-11-02
+
+### Added
+
+- multi-stage `Dockerfile` running as uid 10001 with a privilege-dropping entrypoint
+- GHCR publishing on `main` and tags, with build caching
+- `docs/docker.md`, including the host-DNS failure mode
+
 ## 0.10.1 — 2026-11-02
 
 ### Changed

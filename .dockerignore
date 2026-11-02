@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+dist
+build
+.pytest_cache
+.ruff_cache
+.crush
+.coverage
+docs
+tests
+examples
