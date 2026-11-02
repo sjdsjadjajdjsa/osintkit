@@ -112,6 +112,7 @@ def root(
         base_url=base_url or (stored.get("base_url") if config_applies else None) or preset[0],
         model=model or (stored.get("model") if config_applies else None) or preset[1],
         api_key=api_key,
+        hibp_api_key_value=stored.get("hibp_api_key"),
         temperature=temperature,
         max_tokens=max_tokens,
         timeout=timeout,
@@ -561,6 +562,9 @@ def init(
     provider: str | None = typer.Option(None, "--provider", help="Provider to store."),
     api_key: str | None = typer.Option(None, "--api-key", help="Key to store."),
     model: str | None = typer.Option(None, "--model", help="Default model to store."),
+    hibp_key: str | None = typer.Option(
+        None, "--hibp-key", help="Optional Have I Been Pwned key for breach and paste checks."
+    ),
     base_url: str | None = typer.Option(None, "--base-url", help="Custom endpoint to store."),
     force: bool = typer.Option(False, "--force", help="Replace an existing config."),
     verify: bool = typer.Option(True, "--verify/--no-verify", help="Check the key afterwards."),
@@ -603,11 +607,19 @@ def init(
             raise typer.Exit(2)
         data["api_key"] = key
 
+    stored_hibp = stored.get("hibp_api_key")
+    if hibp_key:
+        data["hibp_api_key"] = hibp_key
+    elif stored_hibp and not force:
+        data["hibp_api_key"] = stored_hibp
+
     written = userconfig.save(data)
     out.print(f"[green]stored[/green] {written} (mode 600)")
     out.print(f"provider: {chosen}")
     if data.get("api_key"):
         out.print(f"key: {userconfig.mask(str(data['api_key']))}")
+    if data.get("hibp_api_key"):
+        out.print(f"HIBP key: {userconfig.mask(str(data['hibp_api_key']))}")
 
     if verify:
         probe = Settings(
@@ -698,7 +710,7 @@ def config_cmd(
     table.add_column("value")
     for name, value in stored.items():
         shown: object = value
-        if name == "api_key" and isinstance(value, str) and not reveal:
+        if name in {"api_key", "hibp_api_key"} and isinstance(value, str) and not reveal:
             shown = userconfig.mask(value)
         table.add_row(name, render.escape(str(shown)))
     out.print(table)

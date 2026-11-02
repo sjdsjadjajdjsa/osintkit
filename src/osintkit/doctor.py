@@ -124,10 +124,10 @@ def collect_checks(settings: Settings) -> list[Check]:
         ),
     ]
     for name, variable, why in (
-        ("Have I Been Pwned", "HIBP_API_KEY", "breach collectors will be skipped"),
+        ("Have I Been Pwned", "HIBP_API_KEY", "breach and paste collectors will be skipped"),
         ("GitHub", "GITHUB_TOKEN", "GitHub is limited to 60 requests/hour"),
     ):
-        present = bool(os.environ.get(variable))
+        present = bool(os.environ.get(variable)) or (name.startswith("Have I") and bool(settings.hibp_api_key))
         checks.append(Check(name, "ok" if present else "warn", "set" if present else why))
     if key:
         checks.append(Check("api key shape", "ok" if len(key) >= 20 else "warn", f"{len(key)} chars"))

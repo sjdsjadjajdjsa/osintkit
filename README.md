@@ -61,8 +61,10 @@ Any OpenAI-compatible endpoint works. `init --provider ollama` needs no key for 
 `--provider`, `--base-url`, and `--model` cover everything else. The preset table, key variables,
 and precedence order are in [docs/REFERENCE.md](docs/REFERENCE.md#providers).
 
-Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts GitHub from 60 to
-5000 requests/hour. Everything else needs no credentials.
+Optional keys: a Have I Been Pwned subscription (`--hibp-key` on init, or `HIBP_API_KEY`) adds
+per-account breach and paste membership; `GITHUB_TOKEN` lifts GitHub from 60 to 5000
+requests/hour. Both stay local — the key is yours, and every user of the tool brings their own.
+Everything else needs no credentials.
 
 ## Commands
 

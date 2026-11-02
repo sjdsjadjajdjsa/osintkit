@@ -7,8 +7,8 @@ from pathlib import Path
 from typing import Any
 
 FILENAME = "config.toml"
-KEYS = ("provider", "model", "base_url", "api_key", "resolvers")
-SECRET_KEYS = frozenset({"api_key"})
+KEYS = ("provider", "model", "base_url", "api_key", "hibp_api_key", "resolvers")
+SECRET_KEYS = frozenset({"api_key", "hibp_api_key"})
 
 
 def config_home() -> Path:

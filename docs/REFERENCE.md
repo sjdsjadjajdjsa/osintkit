@@ -88,7 +88,7 @@ pwned. `--json` for machines. Nothing about the password beyond the prefix leave
 
 `osintkit init` writes `~/.config/osintkit/config.toml` (or `$XDG_CONFIG_HOME`) with mode 600 in
 a 700 directory, after checking the key with a one-token request. Keys recognised:
-`provider`, `model`, `base_url`, `api_key`, `resolvers`.
+`provider`, `model`, `base_url`, `api_key`, `hibp_api_key`, `resolvers`.
 
 `osintkit config` prints them masked, `--reveal` shows the key, `--unset KEY` removes one, and
 `--path` prints the location. Deleting the file is the same as `--unset` everything.
@@ -96,6 +96,7 @@ a 700 directory, after checking the key with a one-token request. Keys recognise
 Precedence for each value: command-line flag, then the provider-specific environment variable,
 then a key prefix, then the config file, then the built-in default. Stored values apply only when
 the stored provider matches the one in use, so a one-off key export never gets the stored key.
+`HIBP_API_KEY` in the environment beats a stored `hibp_api_key`.
 
 ## Offline mode
 

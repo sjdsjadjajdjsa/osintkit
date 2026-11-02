@@ -643,3 +643,48 @@ def test_password_command_hit_and_miss(monkeypatch):
         miss = runner.invoke(app, ["password", "hunter3", "--json"])
     assert miss.exit_code == 0
     assert jsonish(miss.output)["pwned"] is False
+
+
+def test_init_stores_optional_hibp_key(xdg):
+    from osintkit import userconfig
+
+    result = runner.invoke(
+        app,
+        ["init", "--provider", "venice", "--api-key", "k" * 30, "--hibp-key", "h" * 32, "--no-verify"],
+    )
+    assert result.exit_code == 0
+    assert userconfig.load()["hibp_api_key"] == "h" * 32
+    shown = runner.invoke(app, ["config"])
+    assert "hhhhhh…" in shown.output
+    assert "h" * 32 not in shown.output
+
+
+def test_stored_hibp_key_reaches_settings(xdg, monkeypatch):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "k" * 30, "hibp_api_key": "stored-hibp"})
+    captured = {}
+
+    async def spy(target, settings, *args, **kwargs):
+        captured["hibp"] = settings.hibp_api_key
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(pipeline, "execute", spy)
+    runner.invoke(app, ["lookup", "--domain", "a.com"])
+    assert captured["hibp"] == "stored-hibp"
+
+
+def test_env_hibp_key_beats_stored(xdg, monkeypatch):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "k" * 30, "hibp_api_key": "stored-hibp"})
+    monkeypatch.setenv("HIBP_API_KEY", "env-hibp")
+    captured = {}
+
+    async def spy(target, settings, *args, **kwargs):
+        captured["hibp"] = settings.hibp_api_key
+        raise RuntimeError("stop")
+
+    monkeypatch.setattr(pipeline, "execute", spy)
+    runner.invoke(app, ["lookup", "--domain", "a.com"])
+    assert captured["hibp"] == "env-hibp"

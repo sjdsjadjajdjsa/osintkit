@@ -109,6 +109,7 @@ class Settings:
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
     api_key: str | None = None
+    hibp_api_key_value: str | None = None
     temperature: float = DEFAULT_TEMPERATURE
     max_tokens: int = 4000
     timeout: float = DEFAULT_TIMEOUT
@@ -127,7 +128,7 @@ class Settings:
 
     @property
     def hibp_api_key(self) -> str | None:
-        return os.environ.get("HIBP_API_KEY") or None
+        return os.environ.get("HIBP_API_KEY") or self.hibp_api_key_value or None
 
     @property
     def github_token(self) -> str | None:
