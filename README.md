@@ -30,7 +30,7 @@ on a domain or company. Findings are leads to verify, not facts.
 ## Install
 
 ```bash
-uv tool install osintkit --from https://github.com/sjdsjadjajdjsa/osintkit
+uv tool install git+https://github.com/sjdsjadjajdjsa/osintkit
 # or
 pipx install git+https://github.com/sjdsjadjajdjsa/osintkit
 ```
