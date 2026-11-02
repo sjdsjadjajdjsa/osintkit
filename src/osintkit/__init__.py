@@ -1,3 +1,3 @@
 """osintkit: a public-data OSINT aggregator."""
 
-__version__ = "0.1.2"
+__version__ = "0.2.0"

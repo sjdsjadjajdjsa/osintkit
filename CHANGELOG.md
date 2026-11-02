@@ -6,6 +6,16 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.2.0 — 2026-11-02
+
+### Added
+
+- `--offline` mode: a full report built from local rules, no model and no key
+
+### Fixed
+
+- the ports collector was registered as a sync helper, so `--ports` and the registry entry broke
+
 ## 0.1.2 — 2026-11-02
 
 ### Fixed
