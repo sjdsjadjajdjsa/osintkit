@@ -6,7 +6,7 @@ import respx
 from osintkit import passwords
 
 PASSWORD = "hunter2"
-SHA = hashlib.sha1(PASSWORD.encode()).hexdigest().upper()
+SHA = hashlib.sha1(PASSWORD.encode(), usedforsecurity=False).hexdigest().upper()
 
 
 def test_digest_splits_the_hash():
