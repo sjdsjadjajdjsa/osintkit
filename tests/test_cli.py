@@ -1,4 +1,5 @@
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,13 @@ from osintkit.cli import app
 from osintkit.collectors import base
 
 runner = CliRunner()
+
+
+ANSI = re.compile(r"\x1b\[[0-9;]*m")
+
+
+def plain(output):
+    return ANSI.sub("", output).replace("│", " ")
 
 
 def jsonish(output):
@@ -329,7 +337,7 @@ def test_markdown_out_directory_gets_default_filename(monkeypatch, tmp_path):
 def test_unknown_only_collector_suggests_alternative():
     result = runner.invoke(app, ["lookup", "--domain", "a.com", "--dry-run", "--only", "fake_sourc"])
     assert result.exit_code == 2
-    flat = " ".join(result.output.replace("│", " ").split())
+    flat = " ".join(plain(result.output).split())
     assert "did you mean fake_source" in flat
 
 
