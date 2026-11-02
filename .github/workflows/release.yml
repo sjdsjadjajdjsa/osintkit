@@ -17,6 +17,7 @@ jobs:
         run: |
           uv python install 3.12
           uv venv --python 3.12
+          uv sync --frozen
           uv pip install build
           .venv/bin/python -m build --outdir dist
       - name: Verify the tag matches the package version
@@ -27,7 +28,7 @@ jobs:
       - name: Checksums
         run: |
           cd dist
-          sha256sum ./* > SHA256SUMS.txt
+          sha256sum osintkit-*.whl osintkit-*.tar.gz > SHA256SUMS.txt
       - uses: softprops/action-gh-release@v3
         with:
           files: |
