@@ -157,13 +157,14 @@ async def synthesize(
             )
         return content
 
-    raw = await call(messages, 1)
+    raw = ""
     try:
+        raw = await call(messages, 1)
         return Analysis.model_validate(extract_json(raw))
     except (SynthesisError, ValueError) as first_error:
         repair = [
             *messages,
-            {"role": "assistant", "content": raw},
+            {"role": "assistant", "content": raw or "(empty)"},
             {"role": "user", "content": REPAIR_PROMPT.format(error=str(first_error)[:400])},
         ]
         raw_retry = await call(repair, 2)

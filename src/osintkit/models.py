@@ -200,11 +200,13 @@ class PromptBundle(BaseModel):
     target_type: str
     collected_at: str = Field(default_factory=_utcnow_iso)
     results: list[CollectorResult] = Field(default_factory=list)
+    signals: dict[str, Any] = Field(default_factory=dict)
 
     def to_prompt_json(self) -> str:
         payload = {
             "target": self.target,
             "target_type": self.target_type,
+            "signals": self.signals,
             "sources": [
                 {
                     "source": r.collector,

@@ -165,7 +165,15 @@ async def execute(
             report.notes.append(f"{duplicates} duplicate breach records were merged across sources")
             logger.event("breaches_merged", duplicates=duplicates)
 
-        bundle = PromptBundle(target=target, target_type=target_type, results=prompt_results)
+        merged_breaches = next((r.data for r in prompt_results if r.collector == "breach_index"), [])
+        signals = normalise.signals_for(merged_breaches)
+
+        bundle = PromptBundle(
+            target=target,
+            target_type=target_type,
+            results=prompt_results,
+            signals=signals,
+        )
 
         if settings.raw:
             report.notes.append("raw output: model not called")
@@ -196,6 +204,9 @@ async def execute(
                 with _status(progress, settings, "[cyan]synthesising briefing…[/cyan]"):
                     report.analysis = await synthesis.synthesize(
                         client, bundle, logger=logger, max_tokens=settings.max_tokens
+                    )
+                    report.analysis.risk_level = normalise.apply_floor(
+                        report.analysis.risk_level, signals.get("risk_floor", "low")
                     )
         except (OsintKitError, SynthesisError) as exc:
             report.notes.append(f"synthesis failed: {exc}")

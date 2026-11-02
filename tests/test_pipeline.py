@@ -159,3 +159,29 @@ async def test_duplicate_breaches_are_merged_before_prompting(settings, monkeypa
     assert prompt["user"].count('"name": "Acme"') == 1
     assert '"sources": [' in prompt["user"]
     assert [r.collector for r in outcome.report.collectors] == ["hibp_breaches", "xposed_or_not"]
+
+
+async def test_risk_floor_overrides_a_timid_model(settings, monkeypatch, console):
+    async def breachy(ctx):
+        return [{"name": f"B{index}", "data_types": ["Passwords"], "source": "s"} for index in range(4)]
+
+    monkeypatch.setattr(
+        base, "REGISTRY", [base.Collector(name="xposed_or_not", target_types=("email",), func=breachy)]
+    )
+    monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    outcome = await pipeline.execute("a@b.co", settings, RunLogger("floor"), console)
+    assert outcome.report.analysis.risk_level == "high"
+
+
+async def test_no_breaches_keep_the_model_choice(settings, monkeypatch, console):
+    async def empty(ctx):
+        return []
+
+    monkeypatch.setattr(
+        base, "REGISTRY", [base.Collector(name="xposed_or_not", target_types=("email",), func=empty)]
+    )
+    monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    outcome = await pipeline.execute("a@b.co", settings, RunLogger("floor2"), console)
+    assert outcome.report.analysis.risk_level == "low"

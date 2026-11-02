@@ -140,6 +140,9 @@ requests and the synthesis call.
 - Identical prompts are cached, so a repeat run costs nothing until data or the prompt changes.
 - Breach records are merged across sources on case-insensitive names, keeping every source and
   the earliest date, so three indexes cannot triple-count one incident.
+- Breach count and credential types produce a computed risk floor. The model may rank higher,
+  never lower, so a long credential list cannot come back as "low".
+- An empty or unparseable model reply gets one repair round-trip before the run fails.
 - Partial results still produce a report; unavailable sources are listed as gaps.
 - `--dry-run` writes the ready-to-send prompt; `--raw` writes the collected data.
 - `batch --raw` prints a JSON array of bundles, one per target.

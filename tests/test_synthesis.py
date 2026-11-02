@@ -97,11 +97,24 @@ async def test_synthesize_fails_after_second_failure():
         await synthesize(client, bundle())
 
 
-async def test_network_error_propagates_without_repair():
-    client = FakeClient([SynthesisError("boom")])
+async def test_transport_error_is_retried_once():
+    client = FakeClient([SynthesisError("boom"), json.dumps(VALID)])
+    analysis = await synthesize(client, bundle())
+    assert len(client.calls) == 2
+    assert analysis.summary == "Small footprint."
+
+
+async def test_second_transport_error_surfaces():
+    client = FakeClient([SynthesisError("boom"), SynthesisError("boom again")])
     with pytest.raises(SynthesisError):
         await synthesize(client, bundle())
-    assert len(client.calls) == 1
+
+
+async def test_empty_content_is_retried_once():
+    client = FakeClient(["", json.dumps(VALID)])
+    analysis = await synthesize(client, bundle())
+    assert len(client.calls) == 2
+    assert analysis.risk_level == "medium"
 
 
 def test_extract_json_rejects_missing_object():
