@@ -6,6 +6,12 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.11.1 — 2026-11-02
+
+### Changed
+
+- SHA-1 call declares `usedforsecurity=False`; the CodeQL alert is dismissed as protocol-mandated
+
 ## 0.11.0 — 2026-11-02
 
 ### Added
