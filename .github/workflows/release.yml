@@ -1,0 +1,35 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v6
+      - name: Build
+        run: |
+          uv python install 3.12
+          uv venv --python 3.12
+          uv pip install build
+          .venv/bin/python -m build --outdir dist
+      - name: Verify the tag matches the package version
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          version="$(.venv/bin/python -c 'import osintkit; print(osintkit.__version__)')"
+          test "$tag" = "$version" || { echo "tag $tag != version $version"; exit 1; }
+      - name: Checksums
+        run: |
+          cd dist
+          sha256sum ./* > SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/*
+          generate_release_notes: true

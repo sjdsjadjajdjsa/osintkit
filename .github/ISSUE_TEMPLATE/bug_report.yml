@@ -1,0 +1,57 @@
+name: Bug report
+description: Something broke or lied
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Never paste a live API key. Trim personal data from reports where you can.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Output of `osintkit --version`
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: Redact the target if it is sensitive
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual
+      description: Paste the error or the coverage panel
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Area
+      options:
+        - collector / source
+        - synthesis / model
+        - rendering / output
+        - cache / storage
+        - CLI / UX
+        - packaging / install
+        - other
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: Reproduced on the latest main
+        - label: osintkit doctor output included (key length only)

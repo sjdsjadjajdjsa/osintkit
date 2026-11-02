@@ -1,177 +1,140 @@
 # osintkit
 
-A command-line OSINT aggregator for **email addresses, usernames, domains, and companies**.
+[![ci](https://github.com/sjdsjadjajdjsa/osintkit/actions/workflows/ci.yml/badge.svg)](https://github.com/sjdsjadjajdjsa/osintkit/actions/workflows/ci.yml)
+[![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
+[![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-osintkit only queries **publicly available data**: certificate transparency logs, public DNS
-resolvers, WHOIS, public GitHub search, public breach indexes, paste archives, and public
-profile pages. It never logs in anywhere on your behalf and never touches paid data brokers.
+Public-data OSINT for one email, username, domain, or company: gathered from free sources,
+briefed by an LLM acting as a defensive analyst, rendered as a colour-coded report.
 
-It gathers what it can, hands the raw material to an LLM acting as a defensive analyst, and
-renders a colour-coded briefing with a risk level and hardening advice.
+`osintkit` uses only public sources: certificate transparency, public DNS, WHOIS, public GitHub
+search, free breach indexes, paste archives, and public profile pages. It never logs in on your
+behalf and never touches a paid data broker.
 
-> **Intended use:** personal privacy checks, pre-engagement reconnaissance for authorised
-> research, and quick due diligence on a domain or company. Results are only as good as the
-> public sources behind them. Treat every finding as a lead to verify, not a fact.
+![osintkit report showing risk, breaches, and recommendations](docs/demo.svg)
+
+A full trimmed report, including breach and account sections, is in
+[docs/sample-output.md](docs/sample-output.md).
+
+## Why
+
+Checking what the public record says about you is tedious: a dozen sites, a dozen formats, no
+synthesis. `osintkit` runs those checks concurrently, keeps the raw evidence, and turns it into
+a briefing with a risk level and concrete hardening advice. Everything is local, every source
+is named, and every gap is reported instead of hidden.
+
+Intended for personal privacy checks, authorised pre-engagement recon, and quick due diligence
+on a domain or company. Findings are leads to verify, not facts.
 
 ## Install
 
 ```bash
-python3.12 -m venv .venv
-source .venv/bin/activate
-pip install -e .
-osintkit --help
+uv tool install git+https://github.com/sjdsjadjajdjsa/osintkit
+# or
+pipx install git+https://github.com/sjdsjadjajdjsa/osintkit
 ```
 
-Requires Python 3.12+.
+From a clone, `pip install -e .` also works. Python 3.12+ only.
 
-## API key
-
-Synthesis uses any OpenAI-compatible endpoint. The default is Venice:
+## Quick start
 
 ```bash
-export API_KEY=...   # required for synthesis
-```
-
-| Variable | Purpose |
-| --- | --- |
-| `API_KEY` | model API key (or pass `--api-key`) |
-| `HIBP_API_KEY` | enables the Have I Been Pwned collectors; without it they are skipped with a note |
-| `GITHUB_TOKEN` | raises GitHub rate limits from 60/h to 5000/h |
-
-The endpoint and model are inferred from a recognisable key prefix (`sk-or-` selects OpenRouter
-and `deepseek/deepseek-v4.1-flash-1017`); explicit `--base-url`/`--model` always win.
-
-Every other source works with no credentials. `--dry-run` needs no key at all.
-
-## Usage
-
-```bash
+export API_KEY=...                 # model key, any OpenAI-compatible endpoint
+osintkit doctor --deep             # prove the key and endpoint work
 osintkit lookup alice@example.com
-osintkit lookup --username alice
-osintkit lookup --domain example.com --markdown
-osintkit lookup --company "Example Ltd" --json
-osintkit lookup alice@example.com --dry-run          # print the prompt, no model call
-osintkit lookup example.com --raw                    # dump collected JSON, no model call
-osintkit lookup example.com --only dns_records --skip tcp_ports
-osintkit lookup example.com --ports 22,443,8443
-osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
-osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
-osintkit doctor                                  # check key, endpoint, directories
-osintkit doctor --deep                           # also verify the key with a 1-token call
-osintkit schema                                  # JSON schema the model must satisfy
-osintkit prune --days 30                         # delete old cache, logs, reports
-osintkit diff <old-run> <new-run>                  # what changed between two runs
-osintkit history --limit 10
-osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
-osintkit collectors
 ```
 
-Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--max-tokens` (default
-2400), `--timeout`, `--max-connections` (default 16),
-`--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `--resolver` (repeatable, for
-`dns_records`/`passive_subdomains`), `-v` (show raw collector payloads).
+No key? `osintkit lookup example.com --raw` still collects everything; `--dry-run` shows the
+exact synthesis prompt. The endpoint and model are inferred from a recognisable key prefix
+(`sk-or-` selects OpenRouter); `--base-url` and `--model` always win.
 
-Output flags: `--json` (final report as JSON), `--markdown` (export, default filename
-`<target>-osint.md`, override with `-o`), `--dry-run` (prompt only), `--raw` (collected data
-only). `--json` and `--markdown` combine, so a machine-readable run can also leave a file.
-`--dry-run` and `--raw` skip the model and need no key. Unknown `--only`/`--skip` names fail
-with a suggestion instead of silently running nothing.
+Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts GitHub from 60 to
+5000 requests/hour. Everything else needs no credentials.
 
-Exit codes: `0` success, `1` synthesis or partial failure, `2` bad input.
+## Commands
 
-## What gets collected
+| Command | Purpose |
+| --- | --- |
+| `lookup` | One target, one report (`--email`, `--username`, `--domain`, `--company`) |
+| `batch` | A CSV of targets, run concurrently, reported in order |
+| `diff` | What changed between two archived runs |
+| `history` | Past runs, replayable by id |
+| `doctor` | Key, endpoint, and directory checks (`--deep` verifies auth) |
+| `collectors` | Every collector and what it touches |
+| `cache` / `prune` | Inspect, clear, or age out local state |
+| `schema` | The JSON contract the model must satisfy |
 
-| Collector | Targets | Source |
-| --- | --- | --- |
-| `hibp_breaches`, `hibp_pastes` | email | Have I Been Pwned (key required) |
-| `xposed_or_not`, `leakcheck_public` | email | free public breach indexes |
-| `gravatar` | email | Gravatar |
-| `crt_sh_subdomains`, `crt_sh_certificates` | domain | crt.sh |
-| `crt_sh_organization` | company | crt.sh org search |
-| `dns_records`, `dns_mail_posture`, `dns_wildcard` | domain | public resolvers (SPF/DMARC/DKIM) |
-| `passive_subdomains` | domain | cert logs + passive DNS + resolution |
-| `whois_registration` | domain | WHOIS |
-| `tcp_ports` | domain | local TCP connect probes |
-| `github_profile`, `github_commit_search`, `github_user_search`, `github_org_repos` | username/email/company | GitHub public API |
-| `psbdmp_search`, `code_mentions` | email/username/domain | psbdmp (GitHub Gist fallback), grep.app |
-| `username_presence` | username | public profile URLs |
+Output: default colour report, `--json`, `--markdown` (they combine), `--raw` for collected
+data, `--dry-run` for the prompt. Exit codes: `0` ok, `1` synthesis or partial failure, `2` bad
+input.
 
-Collectors run concurrently and independently. A dead source produces a `failed` entry in the
-report instead of aborting the run.
-
-## Output contract
-
-The schema is printed by `osintkit schema` and enforced with pydantic.
-
-Synthesis returns strict JSON: `summary`, `breaches[]`, `associated_accounts[]`,
-`infrastructure_notes[]`, `subdomains[]`, `risk_level`, `recommendations[]`. It is validated
-with pydantic. A malformed reply gets exactly one repair round-trip, then the run fails
-cleanly and the raw collection is still archived.
-
-## Troubleshooting
-
-`osintkit doctor` reports the API key state, endpoint reachability, writable directories, and
-which optional source keys are missing. It never echoes the key itself. Add `--deep` to send a
-one-token completion, which proves the key and model name actually work rather than just that
-the host answers. Exit code is `1` when a check fails.
-
-## Storage
+## How it works
 
 ```
-~/.osintkit/cache/     cached responses
-~/.osintkit/logs/      JSONL, one file per day, every request and collector result
-~/.osintkit/reports/   archived reports (dry runs included, so they can be replayed)
+target -> type detection -> collectors (parallel, cached, retried)
+                                 |
+                                 v
+                     merge + risk signals (deterministic)
+                                 |
+                                 v
+           LLM briefing -> pydantic validation -> one repair retry
+                                 |
+                                 v
+              colour report . JSON . Markdown . archive
 ```
 
-Cache lifetime is 24 hours by default. DNS, mail-posture, wildcard, port, and subdomain
-results expire after 1 hour, certificate-transparency results and profile-presence checks after
-6, because those move fastest.
-`--cache-ttl` and `--no-cache` override both.
+Collectors degrade to a logged gap, never a dead run; a report is produced even when sources or
+the model fail.
 
-Old files are pruned automatically at run start when `OSINTKIT_RETENTION_DAYS` is set
-(default 30). `osintkit prune --days N` does it on demand, `--dry-run` only counts.
+- **Merged breaches.** Three indexes listing one incident collapse into one row with every
+  source and the earliest date.
+- **Risk floor.** Breach count and credential types set a floor the model may exceed but never
+  undercut.
+- **Cached everything.** 24h default, shorter for volatile sources; repeat prompts cost nothing.
+- **Validated output.** Strict JSON schema, one repair round-trip, then a clean failure.
 
-Override the root with `OSINTKIT_HOME`. Nothing leaves your machine except the collector
-requests and the synthesis call.
+## Collectors
 
-## Notable behaviour
+Twenty sources across four target types, all free and login-free: HIBP (key), XposedOrNot,
+LeakCheck, Gravatar, crt.sh (subdomains, certificates, organisation search), public DNS
+(A/AAAA/MX/TXT/NS/CNAME plus SPF, DMARC, DKIM, wildcard), passive subdomains, WHOIS, TCP
+connect probes, GitHub (profile, commits, user search, org repos), psbdmp with a Gist fallback,
+grep.app, Hacker News, Stack Exchange, and username presence. The full table is in
+[docs/REFERENCE.md](docs/REFERENCE.md#collectors) or via `osintkit collectors`.
 
-- Targets are normalised first: scheme, `www.`, and trailing paths are stripped.
-- All HTTP is retried with exponential backoff on `429`/`5xx`, up to three attempts.
-- Identical prompts are cached, so a repeat run costs nothing until data or the prompt changes.
-- Breach records are merged across sources on case-insensitive names, keeping every source and
-  the earliest date, so three indexes cannot triple-count one incident.
-- Breach count and credential types produce a computed risk floor. The model may rank higher,
-  never lower, so a long credential list cannot come back as "low".
-- An empty or unparseable model reply gets one repair round-trip before the run fails.
-- Partial results still produce a report; unavailable sources are listed as gaps.
-- `--dry-run` writes the ready-to-send prompt; `--raw` writes the collected data.
-- `batch --raw` prints a JSON array of bundles, one per target.
-- `batch` runs targets concurrently (`--concurrency`, default 3) but reports in CSV order.
-- Port probing is a single connect attempt and can miss filtered ports.
+## Safety and legality
+
+- Public data only. No logins, no scraping behind auth, no paid brokers.
+- Targets are typed and normalised before any request.
+- Requests retry on `429`/`5xx` with backoff and honour GitHub quota headers.
+- Results are evidence, not ground truth; the report says which sources were unavailable.
+- Cache, logs, and reports stay under `~/.osintkit` (override with `OSINTKIT_HOME`). Retention
+  is 30 days by default.
+
+## Limitations
+
+WHOIS is often redacted. GitHub search is shallow. Free breach indexes lag. Port probing only
+sees what your network can reach. Model summaries can overstate weak signals. Read the coverage
+panel: an empty section may mean "nothing found" or "source skipped".
 
 ## Development
 
 ```bash
-pip install -e '.[dev]'
-pre-commit install          # optional: ruff check + format on commit
+git clone https://github.com/sjdsjadjajdjsa/osintkit
+cd osintkit
+uv sync --extra dev
 pytest
 uvx ruff check src tests
 ```
 
-Tests live in `tests/` and never touch the network: HTTP goes through `respx`, DNS and WHOIS
-are monkeypatched, and `tests/fixtures/` holds a recorded model reply for the full-stack path.
-
-CI runs both on Python 3.12 and 3.13.
-
-Tests mock every HTTP call and the model client; nothing touches the network.
-
-## Limitations
-
-WHOIS servers vary wildly and often redact registrant data. GitHub search is shallow by
-design. Free breach indexes lag real breaches. `tcp_ports` sees only what is reachable from
-your network. Model summaries can overstate weak signals.
+Tests never touch the network: HTTP is mocked with `respx`, DNS and WHOIS are monkeypatched, and
+a recorded model reply covers the full-stack path. CI runs on 3.12 and 3.13. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for the collector contract and
+[docs/architecture.md](docs/architecture.md) for the module map.
 
 ## Licence
 
-MIT.
+MIT. Security reports: [SECURITY.md](SECURITY.md).
+
+`osintkit` is independent tooling. It is not affiliated with any source it queries.

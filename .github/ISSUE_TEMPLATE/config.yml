@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security report
+    url: https://github.com/sjdsjadjajdjsa/osintkit/security/advisories/new
+    about: Private disclosure for key leaks, cache poisoning, injection, and SSRF
