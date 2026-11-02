@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, diff, doctor, passwords, pipeline, render, retention, userconfig
+from . import __version__, diff, doctor, passwords, pipeline, render, retention, userconfig, watch
 from .collectors import REGISTRY
 from .config import (
     DEFAULT_RESOLVERS,
@@ -637,6 +637,57 @@ def init(
             raise typer.Exit(1)
         out.print(f"[green]{endpoint.detail}[/green]")
     out.print("[dim]try: osintkit lookup --domain example.com[/dim]")
+
+
+@app.command("watch")
+def watch_cmd(
+    target: str | None = typer.Argument(None, help="Email, username, domain, or company."),
+    email: str | None = typer.Option(None, "--email", help="Email target."),
+    username: str | None = typer.Option(None, "--username", help="Username target."),
+    domain: str | None = typer.Option(None, "--domain", help="Domain target."),
+    company: str | None = typer.Option(None, "--company", help="Company target."),
+    every: str = typer.Option("1d", "--every", help="Interval: 30m, 6h, 1d."),
+    cycles: int = typer.Option(0, "--cycles", min=0, help="Stop after N runs; 0 means forever."),
+    full: bool = typer.Option(False, "--full", help="Print the whole report on each change."),
+    notify_changes: bool = typer.Option(True, "--notify/--no-notify", help="Desktop notification."),
+    offline: bool = typer.Option(False, "--offline", help="Local report only; no model, no key."),
+    only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
+    skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
+) -> None:
+    """Re-check a target on a schedule and report only changes."""
+    out = _console()
+    try:
+        interval = watch.parse_duration(every)
+        raw, declared = _pick_target(target, email, username, domain, company)
+    except (ValueError, TargetParseError) as exc:
+        out.print(f"[red]{exc}[/red]")
+        raise typer.Exit(2) from exc
+
+    settings = _settings(offline=offline, output_json=False, output_markdown=False, raw=False)
+
+    async def run_once():
+        outcome = await pipeline.execute(
+            raw, settings, RunLogger(pipeline.new_run_id()), out, declared_type=declared
+        )
+        return outcome.report
+
+    def on_report(report, lines, baseline):
+        watch.render_event(report, lines, baseline, out, full=full)
+        if lines and notify_changes:
+            body = "; ".join(lines)[:180]
+            watch.notify(f"change for {report.target}", body)
+
+    out.print(
+        f"[dim]watching {render.escape(raw)} every {every}"
+        + (f", {cycles} runs" if cycles else "")
+        + " · ctrl-c stops[/dim]"
+    )
+    try:
+        changes = asyncio.run(watch.run(raw, run_once, on_report, every=interval, cycles=cycles))
+    except KeyboardInterrupt:
+        out.print("[yellow]stopped[/yellow]")
+        return
+    out.print(f"[dim]{changes} change event(s)[/dim]")
 
 
 @app.command()

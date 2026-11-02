@@ -74,6 +74,7 @@ Everything else needs no credentials.
 | `batch` | A CSV of targets, run concurrently, reported in order |
 | `diff` | What changed between two archived runs |
 | `password` | Is a password in Pwned Passwords (free, no key, hash-prefix only) |
+| `watch` | Re-check on an interval, print only changes, optionally notify |
 | `history` | Past runs, replayable by id |
 | `doctor` | Key, endpoint, and directory checks (`--deep` verifies auth) |
 | `collectors` | Every collector and what it touches |
@@ -139,6 +140,18 @@ not just leaked years ago. They are queried for every target type, keyless.
 Passwords are checked separately with `osintkit password`: Pwned Passwords covers hundreds of
 millions of leaked passwords, needs no key, and only the first five SHA-1 characters leave the
 machine.
+
+## Monitoring
+
+```bash
+osintkit watch --domain example.com --every 1d
+osintkit watch --email you@example.com --every 6h --no-notify
+```
+
+The first run prints a baseline. Later runs print nothing unless `diff` sees movement — a new
+breach, a new host, a source failing, or a risk change — and optionally raise a desktop
+notification through `notify-send`. `--cycles` bounds the loop, `ctrl-c` stops it, and every run
+is archived so you can inspect it afterwards. Pair with cron or a systemd timer for unattended use.
 
 ## Safety and legality
 

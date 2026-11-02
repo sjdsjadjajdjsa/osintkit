@@ -62,6 +62,13 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
 
+## Watching
+
+`watch` repeats a lookup on an interval (`--every`, minimum 60s), prints a baseline, and then
+only reports diffs: added breaches or hosts, risk direction, source failure and recovery.
+`--notify` (default) calls `notify-send` when available; `--full` prints the whole report on a
+change; `--cycles N` bounds the loop. Every cycle is archived and logged like a normal run.
+
 ## Self-check
 
 After synthesis every breach name, date, subdomain, and account URL is compared with the supplied

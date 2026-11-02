@@ -688,3 +688,13 @@ def test_env_hibp_key_beats_stored(xdg, monkeypatch):
     monkeypatch.setattr(pipeline, "execute", spy)
     runner.invoke(app, ["lookup", "--domain", "a.com"])
     assert captured["hibp"] == "env-hibp"
+
+
+def test_watch_runs_a_single_cycle(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    result = runner.invoke(
+        app, ["watch", "--domain", "example.com", "--every", "60s", "--cycles", "1", "--offline"]
+    )
+    assert result.exit_code == 0
+    assert "baseline" in result.output
+    assert "0 change event" in result.output

@@ -6,6 +6,13 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.8.0 — 2026-11-02
+
+### Added
+
+- `watch`: interval re-runs that stay silent unless a diff shows change, with optional desktop
+  notification and bounded cycles
+
 ## 0.7.0 — 2026-11-02
 
 ### Added
