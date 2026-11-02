@@ -39,6 +39,17 @@ uv tool install osintkit
 Every [release](https://github.com/sjdsjadjajdjsa/osintkit/releases) also carries a wheel with
 checksums, and `pip install -e .` works from a clone. Linux, macOS, and Windows; Python 3.12+.
 
+Container image:
+
+```bash
+docker run --rm -it \
+  -e OPENROUTER_API_KEY=... \
+  -v "$HOME/.osintkit:/data" -v "$HOME/.config/osintkit:/config" \
+  ghcr.io/sjdsjadjajdjsa/osintkit lookup --domain example.com
+```
+
+[docs/docker.md](docs/docker.md) covers the host-DNS caveat and running as an unprivileged user.
+
 ## Quick start
 
 ```bash
