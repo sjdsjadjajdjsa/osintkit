@@ -21,12 +21,11 @@ from rich.table import Table
 from . import __version__, diff, doctor, pipeline, render, retention
 from .collectors import REGISTRY
 from .config import (
-    DEFAULT_BASE_URL,
-    DEFAULT_MODEL,
+    PROVIDERS,
     Settings,
     cache_clear,
     cache_stats,
-    preset_for,
+    provider_from_key,
 )
 from .errors import OsintKitError, TargetParseError
 from .logging_store import RunLogger, find_report_for_run, read_report, read_runs, run_exists
@@ -61,10 +60,13 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def root(
-    base_url: str | None = typer.Option(
-        None, "--base-url", help="OpenAI-compatible base URL (inferred from the key prefix)."
+    provider: str | None = typer.Option(
+        None, "--provider", help="Endpoint preset: venice, openrouter, or openai."
     ),
-    model: str | None = typer.Option(None, "--model", help="Model name (inferred from the key prefix)."),
+    base_url: str | None = typer.Option(
+        None, "--base-url", help="OpenAI-compatible base URL (overrides the provider)."
+    ),
+    model: str | None = typer.Option(None, "--model", help="Model name (overrides the provider default)."),
     api_key: str | None = typer.Option(None, "--api-key", help="API key (or set API_KEY)."),
     temperature: float = typer.Option(0.3, "--temperature", min=0.0, max=2.0),
     max_tokens: int = typer.Option(2400, "--max-tokens", min=256, max=16000),
@@ -84,11 +86,14 @@ def root(
         is_eager=True,
     ),
 ) -> None:
+    if provider and provider not in PROVIDERS:
+        raise typer.BadParameter(f"unknown provider {provider!r}; choose from {', '.join(PROVIDERS)}")
     effective_key = api_key or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
-    preset = preset_for(effective_key)
+    chosen = provider or provider_from_key(effective_key) or "venice"
+    preset = PROVIDERS[chosen]
     settings = Settings(
-        base_url=base_url or (preset[0] if preset else DEFAULT_BASE_URL),
-        model=model or (preset[1] if preset else DEFAULT_MODEL),
+        base_url=base_url or preset[0],
+        model=model or preset[1],
         api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,

@@ -12,25 +12,28 @@ from typing import Any
 
 APP_HOME_ENV = "OSINTKIT_HOME"
 DEFAULT_BASE_URL = "https://api.venice.ai/api/v1"
-DEFAULT_MODEL = "deepseek-v4-1-flash-1017-uncensored"
+DEFAULT_MODEL = "deepseek-v4-1-flash"
 DEFAULT_TEMPERATURE = 0.3
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_CACHE_TTL = 24 * 60 * 60
 DEFAULT_RESOLVERS = ("1.1.1.1", "8.8.8.8", "9.9.9.9")
 
-PROVIDER_PRESETS: dict[str, tuple[str, str]] = {
-    "sk-or-": ("https://openrouter.ai/api/v1", "deepseek/deepseek-v4.1-flash-1017"),
+PROVIDERS: dict[str, tuple[str, str]] = {
+    "venice": (DEFAULT_BASE_URL, DEFAULT_MODEL),
+    "openrouter": ("https://openrouter.ai/api/v1", "deepseek/deepseek-v4.1-flash-1017"),
+    "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
 }
+KEY_PREFIXES: dict[str, str] = {"sk-or-": "openrouter", "sk-proj-": "openai"}
 
 
-def preset_for(api_key: str | None) -> tuple[str, str] | None:
-    """Infer the endpoint and model from a recognisable key prefix."""
+def provider_from_key(api_key: str | None) -> str | None:
+    """Infer a provider name from a recognisable key prefix."""
     if not api_key:
         return None
-    for prefix, preset in PROVIDER_PRESETS.items():
+    for prefix, provider in KEY_PREFIXES.items():
         if api_key.startswith(prefix):
-            return preset
+            return provider
     return None
 
 

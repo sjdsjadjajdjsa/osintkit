@@ -46,8 +46,10 @@ osintkit lookup alice@example.com
 ```
 
 No key? `osintkit lookup example.com --raw` still collects everything; `--dry-run` shows the
-exact synthesis prompt. The endpoint and model are inferred from a recognisable key prefix
-(`sk-or-` selects OpenRouter); `--base-url` and `--model` always win.
+exact synthesis prompt.
+
+Any OpenAI-compatible endpoint works. `--provider venice|openrouter|openai` picks a preset, and
+a recognisable key prefix picks one for you; `--base-url` and `--model` always win.
 
 Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts GitHub from 60 to
 5000 requests/hour. Everything else needs no credentials.

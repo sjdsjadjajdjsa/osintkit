@@ -403,3 +403,35 @@ def test_diff_identical_says_so(tmp_path):
     path = _archived(tmp_path, "a.json", "low")
     result = runner.invoke(app, ["diff", path, path])
     assert "no material changes" in result.output
+
+
+def test_provider_flag_selects_preset(monkeypatch):
+    monkeypatch.setenv("API_KEY", "sk-anything")
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["--provider", "openrouter", "lookup", "--domain", "a.com", "--json"])
+    payload = jsonish(result.output)
+    assert payload["base_url"] == "https://openrouter.ai/api/v1"
+
+
+def test_unknown_provider_rejected():
+    result = runner.invoke(app, ["--provider", "nope", "lookup", "--domain", "a.com", "--dry-run"])
+    assert result.exit_code == 2
+    assert "unknown provider" in result.output
+
+
+def test_explicit_base_url_beats_provider(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(
+        app,
+        [
+            "--provider",
+            "openrouter",
+            "--base-url",
+            "https://proxy.test/v1",
+            "lookup",
+            "--domain",
+            "a.com",
+            "--json",
+        ],
+    )
+    assert jsonish(result.output)["base_url"] == "https://proxy.test/v1"

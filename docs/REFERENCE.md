@@ -29,11 +29,18 @@ Any OpenAI-compatible endpoint works:
 
 ```bash
 export API_KEY=...                                  # or --api-key
-osintkit --base-url https://openrouter.ai/api/v1 --model deepseek/deepseek-v4.1-flash-1017 ...
+osintkit --provider openrouter ...
+osintkit --base-url https://gateway.internal/v1 --model house-model ...
 ```
 
-A `sk-or-` key selects OpenRouter and its default model automatically. Defaults are Venice and
-`deepseek-v4-1-flash-1017-uncensored`. Temperature is 0.3, `--max-tokens` defaults to 2400.
+| `--provider` | Endpoint | Default model | Auto-selected by |
+| --- | --- | --- | --- |
+| `venice` (default) | `api.venice.ai/api/v1` | see `osintkit --help` | anything else |
+| `openrouter` | `openrouter.ai/api/v1` | `deepseek/deepseek-v4.1-flash-1017` | `sk-or-` key |
+| `openai` | `api.openai.com/v1` | `gpt-4.1-mini` | `sk-proj-` key |
+
+Explicit `--base-url` and `--model` beat both the provider and the prefix. Temperature is 0.3,
+`--max-tokens` defaults to 2400.
 
 ## Global flags
 

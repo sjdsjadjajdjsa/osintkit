@@ -64,7 +64,7 @@ def test_settings_defaults_match_spec():
     assert settings.temperature == 0.3
     assert settings.max_tokens == 2400
     assert settings.base_url == "https://api.venice.ai/api/v1"
-    assert settings.model == "deepseek-v4-1-flash-1017-uncensored"
+    assert settings.model == "deepseek-v4-1-flash"
     assert settings.max_attempts == 3
 
 

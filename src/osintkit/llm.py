@@ -1,4 +1,4 @@
-"""Minimal OpenAI-compatible chat client (Venice by default)."""
+"""Minimal OpenAI-compatible chat client."""
 
 from __future__ import annotations
 

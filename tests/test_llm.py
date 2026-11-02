@@ -18,7 +18,7 @@ def test_endpoint_collapses_trailing_slash(settings):
     assert LLMClient(settings).endpoint() == URL
 
 
-def test_endpoint_default_is_venice(settings):
+def test_endpoint_defaults_to_the_shipped_provider(settings):
     from osintkit.config import DEFAULT_BASE_URL, DEFAULT_MODEL
 
     fresh = type(settings)()
