@@ -6,6 +6,13 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.1.2 — 2026-11-02
+
+### Fixed
+
+- releases now dispatch the PyPI job explicitly, since `GITHUB_TOKEN` releases do not fire
+  `release` events
+
 ## 0.1.1 — 2026-11-02
 
 ### Added
