@@ -472,3 +472,10 @@ def test_offline_batch(monkeypatch, tmp_path):
     result = runner.invoke(app, ["batch", "--file", str(csv_file), "--offline", "--json"])
     assert result.exit_code == 0
     assert jsonish(result.output)[0]["analysis"]["risk_level"] == "low"
+
+
+def test_missing_key_mentions_offline(monkeypatch):
+    monkeypatch.delenv("API_KEY")
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    result = runner.invoke(app, ["lookup", "--domain", "example.com"])
+    assert "--offline" in " ".join(result.output.split())

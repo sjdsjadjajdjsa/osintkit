@@ -32,7 +32,7 @@ from .logging_store import RunLogger, find_report_for_run, read_report, read_run
 from .targets import VALID_TYPES
 
 app = typer.Typer(
-    add_completion=False,
+    add_completion=True,
     no_args_is_help=True,
     help="Public-data OSINT aggregator for emails, usernames, domains, and companies.",
     rich_markup_mode="rich",

@@ -213,7 +213,9 @@ async def execute(
 
         try:
             if not settings.resolved_api_key():
-                raise MissingAPIKey("No API key. Set API_KEY or pass --api-key (dry run works without one).")
+                raise MissingAPIKey(
+                    "No API key. Set API_KEY, pass --api-key, or use --offline for a local report."
+                )
             async with LLMClient(settings, http) as client:
                 with _status(progress, settings, "[cyan]synthesising briefing…[/cyan]"):
                     report.analysis = await synthesis.synthesize(
