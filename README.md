@@ -2,6 +2,7 @@
 
 [![ci](https://github.com/sjdsjadjajdjsa/osintkit/actions/workflows/ci.yml/badge.svg)](https://github.com/sjdsjadjajdjsa/osintkit/actions/workflows/ci.yml)
 [![python](https://img.shields.io/badge/python-3.12%20%7C%203.13-blue)](pyproject.toml)
+[![pypi](https://img.shields.io/pypi/v/osintkit)](https://pypi.org/project/osintkit/)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
@@ -30,14 +31,13 @@ on a domain or company. Findings are leads to verify, not facts.
 ## Install
 
 ```bash
-uv tool install git+https://github.com/sjdsjadjajdjsa/osintkit
+pipx install osintkit
 # or
-pipx install git+https://github.com/sjdsjadjajdjsa/osintkit
+uv tool install osintkit
 ```
 
-[Releases](https://github.com/sjdsjadjajdjsa/osintkit/releases) carry a signed-checksum wheel;
-`pip install osintkit-0.1.0-py3-none-any.whl` works from one. From a clone,
-`pip install -e .` also works. Python 3.12+ only.
+Every [release](https://github.com/sjdsjadjajdjsa/osintkit/releases) also carries a wheel with
+checksums, and `pip install -e .` works from a clone. Python 3.12+ only.
 
 ## Quick start
 

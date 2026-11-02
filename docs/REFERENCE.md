@@ -103,10 +103,12 @@ if every collector breaks, so upstream parser rot surfaces without a nightly ful
 
 ## Publishing
 
-`.github/workflows/publish.yml` builds and uploads to PyPI on a published release, using Trusted
-Publishing (OIDC, `pypi` environment, no token). It is inert until you:
+Releases publish to PyPI through Trusted Publishing (OIDC, `pypi` environment, no token).
 
-1. Create the project on PyPI and add a trusted publisher for this repo and the `pypi` environment.
-2. Set the repository variable `PUBLISH_TO_PYPI=true`.
+The chain: `release.yml` builds, attaches assets, then dispatches `publish.yml` when the
+repository variable `PUBLISH_TO_PYPI` is `true`. The dispatch is needed because releases created
+by `GITHUB_TOKEN` do not fire `release` events.
 
-Until then, releases attach wheel and sdist assets to GitHub itself.
+To fail safely, `publish.yml` is skipped unless that variable is set and the PyPI pending
+publisher matches owner `sjdsjadjajdjsa`, repository `osintkit`, workflow `publish.yml`, and
+environment `pypi`.
