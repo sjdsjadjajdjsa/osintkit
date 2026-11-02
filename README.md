@@ -132,7 +132,9 @@ requests and the synthesis call.
 
 ## Notable behaviour
 
+- Targets are normalised first: scheme, `www.`, and trailing paths are stripped.
 - All HTTP is retried with exponential backoff on `429`/`5xx`, up to three attempts.
+- Identical prompts are cached, so a repeat run costs nothing until data or the prompt changes.
 - Partial results still produce a report; unavailable sources are listed as gaps.
 - `--dry-run` writes the ready-to-send prompt; `--raw` writes the collected data.
 - `batch --raw` prints a JSON array of bundles, one per target.

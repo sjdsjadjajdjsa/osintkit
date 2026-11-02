@@ -145,3 +145,16 @@ def test_strings_coerce_into_lists_and_objects():
     assert analysis.infrastructure_notes == ["one", "two"]
     assert analysis.subdomains == ["A.example.com"]
     assert analysis.recommendations == []
+
+
+def test_prompt_is_stable_across_bundle_timestamps():
+    first = bundle()
+    second = bundle()
+    second.collected_at = "2030-01-01T00:00:00+00:00"
+    assert first.to_prompt_json() == second.to_prompt_json()
+
+
+def test_prompt_keeps_target_and_data():
+    payload = bundle().to_prompt_json()
+    assert "alice@example.com" in payload
+    assert "Acme" in payload

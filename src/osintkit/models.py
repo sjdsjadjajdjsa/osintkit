@@ -205,7 +205,6 @@ class PromptBundle(BaseModel):
         payload = {
             "target": self.target,
             "target_type": self.target_type,
-            "collected_at": self.collected_at,
             "sources": [
                 {
                     "source": r.collector,

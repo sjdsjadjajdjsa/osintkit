@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from typing import Any, Self
 
 from .config import Settings
-from .errors import MissingAPIKey, SynthesisError
+from .errors import MissingAPIKey, SourceUnavailable, SynthesisError
 from .http import HttpClient
 
 
@@ -51,15 +51,22 @@ class LLMClient:
         if response_format:
             payload["response_format"] = dict(response_format)
 
-        response = await self._http.post_json(
-            self.endpoint(),
-            namespace="llm",
-            payload=payload,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-        )
+        try:
+            response = await self._http.post_json(
+                self.endpoint(),
+                namespace="llm",
+                payload=payload,
+                headers={
+                    "Authorization": f"Bearer {api_key}",
+                    "Content-Type": "application/json",
+                },
+            )
+        except SourceUnavailable as exc:
+            if "HTTP 401" in str(exc) or "HTTP 403" in str(exc):
+                raise SynthesisError(
+                    "API key rejected; run `osintkit doctor --deep` to confirm it"
+                ) from exc
+            raise
         try:
             body = response.json()
         except ValueError as exc:

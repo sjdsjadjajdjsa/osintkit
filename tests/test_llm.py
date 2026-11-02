@@ -78,3 +78,21 @@ def test_extract_content_surfaces_api_error():
 def test_extract_content_rejects_bad_shapes(body):
     with pytest.raises(SynthesisError):
         extract_content(body)
+
+
+@respx.mock
+async def test_rejected_key_becomes_actionable_error(settings):
+    respx.post(URL).mock(return_value=httpx.Response(401))
+    async with client(settings) as llm:
+        with pytest.raises(SynthesisError, match="doctor --deep"):
+            await llm.chat([{"role": "user", "content": "x"}])
+
+
+@respx.mock
+async def test_other_errors_stay_source_errors(settings):
+    from osintkit.errors import SourceUnavailable
+
+    respx.post(URL).mock(return_value=httpx.Response(400))
+    async with client(settings) as llm:
+        with pytest.raises(SourceUnavailable):
+            await llm.chat([{"role": "user", "content": "x"}])
