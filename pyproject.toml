@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "osintkit"
-version = "0.8.0"
+version = "0.9.0"
 description = "Public-data OSINT aggregator for emails, usernames, domains, and companies"
 readme = "README.md"
 requires-python = ">=3.12"
@@ -29,6 +29,7 @@ dependencies = [
     "rich>=13.7",
     "dnspython>=2.6",
     "python-whois>=0.9",
+    "phonenumbers>=8.13",
 ]
 
 [project.optional-dependencies]

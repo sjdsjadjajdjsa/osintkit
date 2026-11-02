@@ -6,7 +6,7 @@
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-Public-data OSINT for one email, username, domain, or company: gathered from free sources,
+Public-data OSINT for one email, username, domain, company, phone number, or Bitcoin address: gathered from free sources,
 briefed by an LLM acting as a defensive analyst, rendered as a colour-coded report.
 
 `osintkit` uses only public sources: certificate transparency, public DNS, WHOIS, public GitHub
@@ -70,10 +70,10 @@ Everything else needs no credentials.
 
 | Command | Purpose |
 | --- | --- |
-| `lookup` | One target, one report (`--email`, `--username`, `--domain`, `--company`) |
+| `lookup` | One target, one report (`--email`, `--username`, `--domain`, `--company`, `--phone`, `--crypto`) |
 | `batch` | A CSV of targets, run concurrently, reported in order |
 | `diff` | What changed between two archived runs |
-| `password` | Is a password in Pwned Passwords (free, no key, hash-prefix only) |
+| `password` | Is a password in Pwned Passwords (`--offline` uses a bundled list, no network) |
 | `watch` | Re-check on an interval, print only changes, optionally notify |
 | `history` | Past runs, replayable by id |
 | `doctor` | Key, endpoint, and directory checks (`--deep` verifies auth) |
@@ -115,6 +115,8 @@ the model fail.
   undercut.
 - **Cached everything.** 24h default, shorter for volatile sources; repeat prompts cost nothing.
 - **Validated output.** Strict JSON schema, one repair round-trip, then a clean failure.
+- **Confidence per section.** Each section states `low`, `medium`, or `high`, capped by how many
+  sources actually back it, so a single weak source never reads as certain.
 - **Self-checked claims.** Every breach, date, host, and account URL is compared back to the
   collected data; anything unsupported is called out.
 

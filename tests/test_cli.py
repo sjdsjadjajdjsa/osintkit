@@ -698,3 +698,26 @@ def test_watch_runs_a_single_cycle(monkeypatch):
     assert result.exit_code == 0
     assert "baseline" in result.output
     assert "0 change event" in result.output
+
+
+def test_password_offline_uses_bundled_list_only():
+    hit = runner.invoke(app, ["password", "--offline", "password"])
+    assert hit.exit_code == 1
+    assert "rank #1" in hit.output
+
+    miss = runner.invoke(app, ["password", "--offline", "--json", "kR7#vQ2m!Xp9$Lw4"])
+    assert miss.exit_code == 0
+    assert jsonish(miss.output)["checked_by"] == "bundled list"
+
+
+def test_phone_and_crypto_flags(monkeypatch):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    phone = runner.invoke(app, ["lookup", "--phone", "+14155552671", "--offline"])
+    assert phone.exit_code == 0
+    assert "+14155552671" in phone.output
+
+
+def test_bad_phone_flag_is_usage_error():
+    result = runner.invoke(app, ["lookup", "--phone", "5551234567", "--offline"])
+    assert result.exit_code == 2
+    assert "E.164" in " ".join(result.output.split())

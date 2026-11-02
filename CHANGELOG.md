@@ -6,6 +6,15 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.9.0 — 2026-11-02
+
+### Added
+
+- phone targets with offline libphonenumber metadata (region, carrier, line type, timezones)
+- Bitcoin address targets with balance and transaction history from Blockstream
+- per-section confidence, capped by the number of backing sources
+- `password --offline` against a bundled 10k common-password list, no network
+
 ## 0.8.0 — 2026-11-02
 
 ### Added

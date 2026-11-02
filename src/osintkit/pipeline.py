@@ -14,7 +14,17 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import catalogue, collectors, normalise, offline, render, retention, synthesis, verify
+from . import (
+    catalogue,
+    collectors,
+    confidence,
+    normalise,
+    offline,
+    render,
+    retention,
+    synthesis,
+    verify,
+)
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -209,6 +219,7 @@ async def execute(
         if settings.offline:
             report.model = None
             report.analysis = offline.build(prompt_results, report.notes, target)
+            report.analysis.confidence = confidence.derive(prompt_results)
             report.notes.append("offline mode: risk computed locally, no model call")
             report.elapsed_ms = int((time.perf_counter() - started) * 1000)
             archived = archive_report(report.model_dump(mode="json"))
@@ -248,6 +259,9 @@ async def execute(
                     report.analysis.risk_level = normalise.apply_floor(
                         report.analysis.risk_level, signals.get("risk_floor", "low")
                     )
+                    report.analysis.confidence = confidence.apply(
+                        report.analysis.confidence, confidence.derive(prompt_results)
+                    )
                     unsupported = verify.claims(report.analysis, prompt_results)
                     if unsupported:
                         report.notes.append("not found in source data: " + "; ".join(unsupported))
@@ -261,6 +275,7 @@ async def execute(
             logger.event("run_error", error=str(exc))
             report.model = None
             report.analysis = offline.build(prompt_results, report.notes, target, narrated=True)
+            report.analysis.confidence = confidence.derive(prompt_results)
             report.analysis.risk_level = normalise.apply_floor(
                 report.analysis.risk_level, signals.get("risk_floor", "low")
             )

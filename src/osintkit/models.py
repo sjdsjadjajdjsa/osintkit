@@ -121,6 +121,7 @@ class Analysis(BaseModel):
     subdomains: list[str] = Field(default_factory=list)
     risk_level: RiskLevel = "low"
     recommendations: list[str] = Field(default_factory=list)
+    confidence: dict[str, str] = Field(default_factory=dict)
 
     @field_validator("summary", mode="before")
     @classmethod

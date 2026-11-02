@@ -7,6 +7,8 @@ Everything the README leaves out: every flag, every collector, storage, and fail
 | Collector | Targets | Source | Needs key |
 | --- | --- | --- | --- |
 | `infostealer` | email / username / domain | Hudson Rock stealer logs | no |
+| `phone_info` | phone | libphonenumber metadata, offline | no |
+| `btc_address` | crypto | Blockstream address history | no |
 | `hibp_breaches`, `hibp_pastes` | email | Have I Been Pwned | yes |
 | `xposed_or_not`, `xposed_analytics`, `leakcheck_public` | email | free public breach indexes | no |
 | `gravatar` | email | Gravatar | no |
@@ -62,6 +64,12 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
 
+## Confidence
+
+Every section carries `low`, `medium`, or `high`. The value is derived from how many contributing
+sources returned data (two or more is high, one is medium) and the model may be more pessimistic
+but never more optimistic. A section backed by one index therefore cannot claim high confidence.
+
 ## Watching
 
 `watch` repeats a lookup on an interval (`--every`, minimum 60s), prints a baseline, and then
@@ -94,7 +102,8 @@ domains, and record counts. At most 15 enriched rows go into the prompt; the tru
 
 ## Password checks
 
-`osintkit password [VALUE]` hashes locally, sends only the five-character SHA-1 prefix to
+`osintkit password --offline` checks the bundled 10k most-common list and never opens a socket;
+without `--offline` it hashes locally, sends only the five-character SHA-1 prefix to
 `api.pwnedpasswords.com`, and reports the count and a commonness rating. Exit code `1` means
 pwned. `--json` for machines. Nothing about the password beyond the prefix leaves the machine.
 

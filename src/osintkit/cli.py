@@ -18,7 +18,18 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, diff, doctor, passwords, pipeline, render, retention, userconfig, watch
+from . import (
+    __version__,
+    diff,
+    doctor,
+    passwords,
+    passwords_offline,
+    pipeline,
+    render,
+    retention,
+    userconfig,
+    watch,
+)
 from .collectors import REGISTRY
 from .config import (
     DEFAULT_RESOLVERS,
@@ -139,6 +150,8 @@ def _pick_target(
     username: str | None,
     domain: str | None,
     company: str | None,
+    phone: str | None = None,
+    crypto: str | None = None,
 ) -> tuple[str, str | None]:
     supplied = [
         (name, value)
@@ -147,16 +160,18 @@ def _pick_target(
             ("username", username),
             ("domain", domain),
             ("company", company),
+            ("phone", phone),
+            ("crypto", crypto),
         )
         if value
     ]
     if len(supplied) > 1:
-        raise TargetParseError("pass only one of --email/--username/--domain/--company")
+        raise TargetParseError("pass only one of --email/--username/--domain/--company/--phone/--crypto")
     if supplied:
         kind, value = supplied[0]
         return value, kind
     if not target:
-        raise TargetParseError("give a target or one of --email/--username/--domain/--company")
+        raise TargetParseError("give a target or one of --email/--username/--domain/--company/--phone/--crypto")
     return target, None
 
 
@@ -249,6 +264,8 @@ def lookup(
     username: str | None = typer.Option(None, "--username", help="Username target."),
     domain: str | None = typer.Option(None, "--domain", help="Domain target."),
     company: str | None = typer.Option(None, "--company", help="Company target."),
+    phone: str | None = typer.Option(None, "--phone", help="Phone target (E.164, e.g. +15551234567)."),
+    crypto: str | None = typer.Option(None, "--crypto", help="Bitcoin address target."),
     json_out: bool = typer.Option(False, "--json", help="Raw structured JSON on stdout."),
     markdown: bool = typer.Option(False, "--markdown", help="Write a Markdown report."),
     out_path: Path | None = typer.Option(None, "--out", "-o", help="Markdown destination."),
@@ -277,7 +294,7 @@ def lookup(
     if out_path:
         settings.extra["markdown_path"] = str(out_path)
     try:
-        raw, declared = _pick_target(target, email, username, domain, company)
+        raw, declared = _pick_target(target, email, username, domain, company, phone, crypto)
     except TargetParseError as exc:
         out.print(f"[red]{exc}[/red]")
         raise typer.Exit(2) from exc
@@ -646,6 +663,8 @@ def watch_cmd(
     username: str | None = typer.Option(None, "--username", help="Username target."),
     domain: str | None = typer.Option(None, "--domain", help="Domain target."),
     company: str | None = typer.Option(None, "--company", help="Company target."),
+    phone: str | None = typer.Option(None, "--phone", help="Phone target (E.164, e.g. +15551234567)."),
+    crypto: str | None = typer.Option(None, "--crypto", help="Bitcoin address target."),
     every: str = typer.Option("1d", "--every", help="Interval: 30m, 6h, 1d."),
     cycles: int = typer.Option(0, "--cycles", min=0, help="Stop after N runs; 0 means forever."),
     full: bool = typer.Option(False, "--full", help="Print the whole report on each change."),
@@ -658,7 +677,7 @@ def watch_cmd(
     out = _console()
     try:
         interval = watch.parse_duration(every)
-        raw, declared = _pick_target(target, email, username, domain, company)
+        raw, declared = _pick_target(target, email, username, domain, company, phone, crypto)
     except (ValueError, TargetParseError) as exc:
         out.print(f"[red]{exc}[/red]")
         raise typer.Exit(2) from exc
@@ -694,6 +713,7 @@ def watch_cmd(
 def password(
     value: str | None = typer.Argument(None, help="Password to check; prompt if omitted."),
     json_out: bool = typer.Option(False, "--json", help="JSON output."),
+    offline: bool = typer.Option(False, "--offline", help="Use only the bundled list; no network."),
 ) -> None:
     """Check a password against Pwned Passwords, without sending it."""
     out = _console()
@@ -706,6 +726,32 @@ def password(
     if not secret:
         out.print("[red]no password given[/red]")
         raise typer.Exit(2)
+
+    local_rank = passwords_offline.check(secret)
+    if offline:
+        if local_rank:
+            if json_out:
+                print(
+                    json.dumps(
+                        {
+                            "pwned": True,
+                            "rank": local_rank,
+                            "list_size": passwords_offline.size(),
+                            "checked_by": "bundled list",
+                        }
+                    )
+                )
+            else:
+                out.print(
+                    f"[red]common[/red] rank #{local_rank:,} of {passwords_offline.size():,} "
+                    "(bundled list, no network)"
+                )
+            raise typer.Exit(1)
+        if json_out:
+            print(json.dumps({"pwned": False, "checked_by": "bundled list"}))
+        else:
+            out.print(f"not in the bundled top {passwords_offline.size():,}; not proof of strength")
+        return
 
     settings: Settings = STATE["settings"]  # type: ignore[assignment]
 

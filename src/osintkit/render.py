@@ -48,9 +48,12 @@ def render_report(report: Report, out: Console, *, verbose: bool = False) -> Non
 
     analysis = report.analysis
     out.print(Panel(escape(analysis.summary or "No summary returned."), title="Summary", box=box.ROUNDED))
+    conf = analysis.confidence
 
     if analysis.breaches:
-        table = Table(title="Known breaches", box=box.SIMPLE_HEAD, expand=True)
+        table = Table(
+            title=f"Known breaches · confidence {conf.get('breaches', 'low')}", box=box.SIMPLE_HEAD, expand=True
+        )
         table.add_column("Breach", style="bold")
         table.add_column("Date", no_wrap=True)
         table.add_column("Exposed data")
@@ -67,7 +70,11 @@ def render_report(report: Report, out: Console, *, verbose: bool = False) -> Non
         out.print("[green]No breach records found in the queried sources.[/green]")
 
     if analysis.associated_accounts:
-        table = Table(title="Associated accounts", box=box.SIMPLE_HEAD, expand=True)
+        table = Table(
+            title=f"Associated accounts · confidence {conf.get('accounts', 'low')}",
+            box=box.SIMPLE_HEAD,
+            expand=True,
+        )
         table.add_column("Platform", style="bold")
         table.add_column("Handle")
         table.add_column("Link", overflow="fold")
@@ -83,9 +90,21 @@ def render_report(report: Report, out: Console, *, verbose: bool = False) -> Non
         out.print(table)
 
     if analysis.infrastructure_notes:
-        out.print(_bullets("Infrastructure and attack surface", analysis.infrastructure_notes, "cyan"))
+        out.print(
+            _bullets(
+                f"Infrastructure and attack surface · confidence {conf.get('infrastructure', 'low')}",
+                analysis.infrastructure_notes,
+                "cyan",
+            )
+        )
     if analysis.subdomains:
-        out.print(_bullets("Subdomains", analysis.subdomains, "magenta"))
+        out.print(
+            _bullets(
+                f"Subdomains · confidence {conf.get('subdomains', 'low')}",
+                analysis.subdomains,
+                "magenta",
+            )
+        )
     if analysis.recommendations:
         out.print(_bullets("Recommendations", analysis.recommendations, "green"))
 
@@ -202,6 +221,11 @@ def to_markdown(report: Report) -> str:
         _md_list(lines, "Subdomains", analysis.subdomains)
         _md_list(lines, "Recommendations", analysis.recommendations)
 
+    if analysis is not None and analysis.confidence:
+        lines += ["## Confidence", ""]
+        for section, level in analysis.confidence.items():
+            lines.append(f"- {section}: {level}")
+        lines.append("")
     lines += ["## Source coverage", ""]
     for result in report.collectors:
         if result.skipped:

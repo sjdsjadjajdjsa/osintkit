@@ -38,6 +38,8 @@ Return ONLY a JSON object, no prose and no code fences, with exactly these keys:
   "infrastructure_notes": ["str"],
   "subdomains": ["str"],
   "risk_level": "low" | "medium" | "high",
+  "confidence": {"breaches": "low|medium|high", "accounts": "…", "infrastructure": "…",
+                 "subdomains": "…"},
   "recommendations": ["str"]
 }
 Use empty arrays when a section has no findings.\
