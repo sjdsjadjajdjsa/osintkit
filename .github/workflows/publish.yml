@@ -1,0 +1,29 @@
+name: publish
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  pypi:
+    if: vars.PUBLISH_TO_PYPI == 'true'
+    runs-on: ubuntu-latest
+    environment: pypi
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+      - name: Build
+        run: |
+          uv python install 3.12
+          uv venv --python 3.12
+          uv sync --frozen --no-dev
+          uv pip install build
+          .venv/bin/python -m build --outdir dist
+      - uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist

@@ -90,3 +90,13 @@ root.
 
 `0` success, `1` synthesis or partial failure, `2` bad input (unknown target, collector, port,
 or argument).
+
+## Publishing
+
+`.github/workflows/publish.yml` builds and uploads to PyPI on a published release, using Trusted
+Publishing (OIDC, `pypi` environment, no token). It is inert until you:
+
+1. Create the project on PyPI and add a trusted publisher for this repo and the `pypi` environment.
+2. Set the repository variable `PUBLISH_TO_PYPI=true`.
+
+Until then, releases attach wheel and sdist assets to GitHub itself.

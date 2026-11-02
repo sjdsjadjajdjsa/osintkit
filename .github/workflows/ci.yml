@@ -24,6 +24,8 @@ jobs:
           uv venv --python ${{ matrix.python-version }}
           uv sync --frozen --extra dev
       - name: Lint
-        run: uvx ruff check src tests
+        run: |
+          uvx ruff check src tests
+          uvx ruff format --check src tests
       - name: Test
-        run: .venv/bin/pytest -q
+        run: .venv/bin/pytest -q --cov=osintkit --cov-fail-under=85
