@@ -6,6 +6,15 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.4.0 — 2026-11-02
+
+### Added
+
+- `osintkit init` stores a provider and key once, verifies them, and needs no flags afterwards
+- `osintkit config` shows values masked, reveals the key, unsets keys, and prints the path
+- stored config participates in provider/key precedence below flags and environment
+- `doctor` reports whether a config file exists
+
 ## 0.3.0 — 2026-11-02
 
 ### Added
