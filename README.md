@@ -30,12 +30,14 @@ on a domain or company. Findings are leads to verify, not facts.
 ## Install
 
 ```bash
-uv tool install git+https://github.com/sjdsjadjajdjsa/osintkit
+uv tool install osintkit --from https://github.com/sjdsjadjajdjsa/osintkit
 # or
 pipx install git+https://github.com/sjdsjadjajdjsa/osintkit
 ```
 
-From a clone, `pip install -e .` also works. Python 3.12+ only.
+[Releases](https://github.com/sjdsjadjajdjsa/osintkit/releases) carry a signed-checksum wheel;
+`pip install osintkit-0.1.0-py3-none-any.whl` works from one. From a clone,
+`pip install -e .` also works. Python 3.12+ only.
 
 ## Quick start
 

@@ -31,7 +31,7 @@ All notable changes are recorded here. The format follows
 - batch progress no longer pollutes piped JSON
 - rate-limit and empty-completion handling
 
-## 0.1.0
+## 0.1.0 — 2026-11-02
 
 Initial release: lookup, batch, and history commands; twenty public-source collectors;
 LLM synthesis with schema validation; Rich, JSON, and Markdown output; local cache and logs.
