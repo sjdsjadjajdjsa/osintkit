@@ -435,3 +435,13 @@ def test_explicit_base_url_beats_provider(monkeypatch):
         ],
     )
     assert jsonish(result.output)["base_url"] == "https://proxy.test/v1"
+
+
+def test_collectors_json():
+    result = runner.invoke(app, ["collectors", "--json"])
+    payload = jsonish(result.output)
+    assert payload[0]["name"] == fake_name()
+
+
+def fake_name():
+    return "fake_source"

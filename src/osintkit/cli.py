@@ -486,9 +486,28 @@ def history(
 
 
 @app.command("collectors")
-def list_collectors() -> None:
+def list_collectors(
+    json_out: bool = typer.Option(False, "--json", help="JSON output."),
+) -> None:
     """List available collectors and the target types they serve."""
     from .collectors import REGISTRY
+
+    if json_out:
+        print(
+            json.dumps(
+                [
+                    {
+                        "name": spec.name,
+                        "targets": list(spec.target_types),
+                        "requires": spec.requires,
+                        "description": spec.description,
+                    }
+                    for spec in sorted(REGISTRY, key=lambda c: (c.order, c.name))
+                ],
+                indent=2,
+            )
+        )
+        return
 
     table = Table(box=box.SIMPLE_HEAD)
     table.add_column("collector", style="bold")
