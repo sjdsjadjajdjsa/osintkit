@@ -477,3 +477,10 @@ async def test_ports_override_limits_the_scan(make_context, monkeypatch):
 def test_selected_ports_keeps_order_and_marks_unknown():
     assert ports.selected_ports(["443", "9999"]) == {443: "https", 9999: "unknown"}
     assert ports.selected_ports(None)[22] == "ssh"
+
+
+def test_every_registered_collector_is_coroutine():
+    import inspect
+
+    for spec in base.REGISTRY:
+        assert inspect.iscoroutinefunction(spec.func), f"{spec.name} is not async"

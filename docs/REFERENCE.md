@@ -49,8 +49,15 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 `--max-connections`, `--max-attempts`, `--no-cache`, `--cache-ttl`, `--resolver` (repeatable),
 `-v/--verbose`, `--version`.
 
-Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--dry-run`, `--only`, `--skip`,
+Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
+
+## Offline mode
+
+`--offline` skips the model: breaches, accounts, hosts, and policy gaps are rendered from the
+collected data, risk comes from the same deterministic floor (plus open risky ports and a
+wildcard with no DMARC), and recommendations come from rule checks. Summary text says what was
+and was not collected. Useful without a key, in CI, and when a provider is down.
 
 ## Output contract
 

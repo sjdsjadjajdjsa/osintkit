@@ -36,3 +36,10 @@ Narrow a port scan:
 ```bash
 osintkit lookup --domain example.com --only tcp_ports --ports 22,443
 ```
+
+No key at all:
+
+```bash
+osintkit lookup --domain example.com --offline
+osintkit batch --file targets.csv --offline --json
+```

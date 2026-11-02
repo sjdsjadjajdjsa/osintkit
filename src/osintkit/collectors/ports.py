@@ -59,7 +59,6 @@ async def _probe(host: str, port: int, service: str, semaphore: asyncio.Semaphor
         return {"port": port, "service": service, "banner": banner or None}
 
 
-@collector("tcp_ports", ("domain",), "Open TCP ports on common services", order=80, ttl=3600)
 def selected_ports(override: list[str] | None) -> dict[int, str]:
     if not override:
         return dict(PORTS)
@@ -70,6 +69,7 @@ def selected_ports(override: list[str] | None) -> dict[int, str]:
     return dict(sorted(chosen.items()))
 
 
+@collector("tcp_ports", ("domain",), "Open TCP ports on common services", order=80, ttl=3600)
 async def tcp_ports(ctx: Context) -> dict:
     ports = selected_ports(ctx.settings.extra.get("ports"))
     host = ctx.target.lower()

@@ -79,6 +79,7 @@ class Settings:
     cache_ttl: int = DEFAULT_CACHE_TTL
     resolvers: list[str] = field(default_factory=lambda: list(DEFAULT_RESOLVERS))
     dry_run: bool = False
+    offline: bool = False
     raw: bool = False
     output_json: bool = False
     output_markdown: bool = False

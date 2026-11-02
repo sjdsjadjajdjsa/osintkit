@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import collectors, normalise, render, retention, synthesis
+from . import collectors, normalise, offline, render, retention, synthesis
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -181,6 +181,20 @@ async def execute(
             archived = archive_report(report.model_dump(mode="json"))
             logger.event("run_end", raw=True, report_path=str(archived) if archived else None)
             return Outcome(report=report, extra={"bundle": bundle}, archived=archived)
+
+        if settings.offline:
+            report.model = None
+            report.analysis = offline.build(prompt_results, report.notes, target)
+            report.notes.append("offline mode: risk computed locally, no model call")
+            report.elapsed_ms = int((time.perf_counter() - started) * 1000)
+            archived = archive_report(report.model_dump(mode="json"))
+            logger.event(
+                "run_end",
+                offline=True,
+                report_path=str(archived) if archived else None,
+                risk_level=report.analysis.risk_level,
+            )
+            return Outcome(report=report, archived=archived)
 
         if settings.dry_run:
             report.notes.append("dry run: model not called")

@@ -185,3 +185,12 @@ async def test_no_breaches_keep_the_model_choice(settings, monkeypatch, console)
     monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
     outcome = await pipeline.execute("a@b.co", settings, RunLogger("floor2"), console)
     assert outcome.report.analysis.risk_level == "low"
+
+
+async def test_offline_builds_analysis_without_model(settings, fake_collector, monkeypatch, console):
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    settings.offline = True
+    outcome = await pipeline.execute("example.com", settings, RunLogger("off"), console)
+    assert outcome.report.analysis is not None
+    assert outcome.report.model is None
+    assert any("offline" in note for note in outcome.report.notes)

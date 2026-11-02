@@ -447,3 +447,28 @@ def test_collectors_json():
 
 def fake_name():
     return "fake_source"
+
+
+def test_offline_mode_needs_no_key(monkeypatch):
+    monkeypatch.delenv("API_KEY")
+    monkeypatch.setattr(pipeline, "LLMClient", None)
+    result = runner.invoke(app, ["lookup", "--domain", "example.com", "--offline"])
+    assert result.exit_code == 0
+    assert "no model call" in result.output
+
+
+def test_offline_json_is_a_normal_report(monkeypatch):
+    monkeypatch.delenv("API_KEY")
+    result = runner.invoke(app, ["lookup", "--domain", "example.com", "--offline", "--json"])
+    payload = jsonish(result.output)
+    assert payload["analysis"]["risk_level"] == "low"
+    assert payload["target"] == "example.com"
+
+
+def test_offline_batch(monkeypatch, tmp_path):
+    monkeypatch.delenv("API_KEY")
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--offline", "--json"])
+    assert result.exit_code == 0
+    assert jsonish(result.output)[0]["analysis"]["risk_level"] == "low"

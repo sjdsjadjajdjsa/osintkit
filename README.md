@@ -47,8 +47,9 @@ osintkit doctor --deep             # prove the key and endpoint work
 osintkit lookup alice@example.com
 ```
 
-No key? `osintkit lookup example.com --raw` still collects everything; `--dry-run` shows the
-exact synthesis prompt.
+No key? `osintkit lookup example.com --offline` builds the whole report locally from rule checks,
+no model involved. `--raw` gives the collected JSON and `--dry-run` prints the prompt a model
+would receive.
 
 Any OpenAI-compatible endpoint works. `--provider venice|openrouter|openai` picks a preset, and
 a recognisable key prefix picks one for you; `--base-url` and `--model` always win.
@@ -70,7 +71,7 @@ Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts G
 | `schema` | The JSON contract the model must satisfy |
 
 Output: default colour report, `--json`, `--markdown` (they combine), `--raw` for collected
-data, `--dry-run` for the prompt. Exit codes: `0` ok, `1` synthesis or partial failure, `2` bad
+data, `--offline` for a local report with no model, `--dry-run` for the prompt. Exit codes: `0` ok, `1` synthesis or partial failure, `2` bad
 input.
 
 ## How it works
@@ -83,6 +84,7 @@ target -> type detection -> collectors (parallel, cached, retried)
                                  |
                                  v
            LLM briefing -> pydantic validation -> one repair retry
+                                 |            (--offline replaces this with local rules)
                                  |
                                  v
               colour report . JSON . Markdown . archive

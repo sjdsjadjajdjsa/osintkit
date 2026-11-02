@@ -235,13 +235,20 @@ def lookup(
     out_path: Path | None = typer.Option(None, "--out", "-o", help="Markdown destination."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print the prompt, skip the model."),
     raw: bool = typer.Option(False, "--raw", help="Dump collected data as JSON, skip the model."),
+    offline: bool = typer.Option(False, "--offline", help="Report from collected data only; no model, no key."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
     ports: list[str] | None = typer.Option(None, "--ports", help="Ports to probe, e.g. 22,443."),
 ) -> None:
     """Look up one target."""
     out = _console()
-    settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
+    settings = _settings(
+        output_json=json_out,
+        output_markdown=markdown,
+        dry_run=dry_run,
+        raw=raw,
+        offline=offline,
+    )
     try:
         settings.extra["ports"] = _parse_ports(ports)
     except typer.BadParameter as exc:
@@ -317,6 +324,7 @@ def batch(
     out_dir: Path | None = typer.Option(None, "--out", "-o", help="Markdown output directory."),
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompts, skip the model."),
     raw: bool = typer.Option(False, "--raw", help="JSON array of collected data, skip the model."),
+    offline: bool = typer.Option(False, "--offline", help="Report from collected data only; no model, no key."),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop reporting at the first error."),
     concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10, help="Targets to run at once."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
@@ -325,7 +333,13 @@ def batch(
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
-    settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
+    settings = _settings(
+        output_json=json_out,
+        output_markdown=markdown,
+        dry_run=dry_run,
+        raw=raw,
+        offline=offline,
+    )
     try:
         settings.extra["ports"] = _parse_ports(ports)
     except typer.BadParameter as exc:
