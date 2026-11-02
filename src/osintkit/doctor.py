@@ -28,30 +28,57 @@ def _writable(path: Path) -> bool:
         return False
 
 
-async def _reach_endpoint(settings: Settings) -> Check:
+async def _reach_endpoint(settings: Settings, deep: bool = False) -> Check:
     key = settings.resolved_api_key()
     if not key:
         return Check("model endpoint", "warn", "no API key; synthesis will fail, dry runs still work")
-    url = f"{settings.base_url.rstrip('/')}/models"
+    base = settings.base_url.rstrip("/")
+    headers = {"Authorization": f"Bearer {key}"}
+    fresh = replace(settings, use_cache=False)
+
     try:
-        fresh = replace(settings, use_cache=False)
         async with HttpClient(fresh) as http:
             response = await http.get(
-                url,
+                f"{base}/models",
                 namespace="doctor",
-                headers={"Authorization": f"Bearer {key}"},
+                headers=headers,
                 empty_on=tuple(range(400, 500)),
                 timeout=10.0,
             )
+            if response.status_code >= 400 and response.status_code != 404:
+                return Check("model endpoint", "fail", f"HTTP {response.status_code} from {base}/models")
+
+            if not deep:
+                detail = (
+                    f"{base} answered; key not exercised, use --deep"
+                    if response.status_code < 400
+                    else f"HTTP {response.status_code} from {base}/models; use --deep"
+                )
+                return Check("model endpoint", "ok" if response.status_code < 400 else "warn", detail)
+
+            probe = await http.post_json(
+                f"{base}/chat/completions",
+                namespace="doctor",
+                headers=headers,
+                payload={
+                    "model": settings.model,
+                    "messages": [{"role": "user", "content": "ping"}],
+                    "max_tokens": 1,
+                    "temperature": 0,
+                },
+                timeout=20.0,
+                empty_on=tuple(range(400, 500)),
+            )
     except Exception as exc:
-        return Check("model endpoint", "fail", f"{settings.base_url}: {type(exc).__name__}")
-    if response.status_code == 401:
-        return Check("model endpoint", "fail", "reachable, but the API key was rejected (401)")
-    if response.status_code >= 400:
-        # Not every compatible server implements /models; a 404 still means it answered.
-        state = "warn" if response.status_code == 404 else "fail"
-        return Check("model endpoint", state, f"HTTP {response.status_code} from {url}")
-    return Check("model endpoint", "ok", f"{settings.base_url} answered")
+        return Check("model endpoint", "fail", f"{base}: {type(exc).__name__}")
+
+    if probe.status_code in (401, 403):
+        return Check("model endpoint", "fail", f"key rejected (HTTP {probe.status_code})")
+    if probe.status_code == 404:
+        return Check("model endpoint", "fail", f"model {settings.model!r} or route not found (404)")
+    if probe.status_code >= 400:
+        return Check("model endpoint", "fail", f"completion probe failed (HTTP {probe.status_code})")
+    return Check("model endpoint", "ok", f"{base} accepted a completion for {settings.model}")
 
 
 def collect_checks(settings: Settings) -> list[Check]:
@@ -84,8 +111,8 @@ def collect_checks(settings: Settings) -> list[Check]:
     return checks
 
 
-async def diagnose(settings: Settings) -> list[Check]:
-    return [*collect_checks(settings), await _reach_endpoint(settings)]
+async def diagnose(settings: Settings, *, deep: bool = False) -> list[Check]:
+    return [*collect_checks(settings), await _reach_endpoint(settings, deep)]
 
 
 def failed(checks: list[Check]) -> bool:

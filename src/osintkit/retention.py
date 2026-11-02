@@ -5,7 +5,7 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
-from .config import app_home, cache_dir, ensure_dirs, log_dir, reports_dir
+from .config import cache_dir, ensure_dirs, log_dir, reports_dir
 
 DAY = 86_400
 
@@ -79,7 +79,3 @@ def disk_usage() -> dict[str, int]:
         sizes[name] = total
     sizes["total"] = sum(sizes.values())
     return sizes
-
-
-def root() -> Path:
-    return app_home()

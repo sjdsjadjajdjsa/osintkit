@@ -5,7 +5,6 @@ from __future__ import annotations
 import asyncio
 import json
 import random
-import time
 from collections.abc import Iterable, Mapping
 from typing import Any, Self
 
@@ -81,6 +80,7 @@ class HttpClient:
         payload: Mapping[str, Any],
         headers: Mapping[str, str] | None = None,
         timeout: float | None = None,
+        empty_on: Iterable[int] = (),
     ) -> httpx.Response:
         return await self._request(
             "POST",
@@ -88,7 +88,7 @@ class HttpClient:
             namespace=namespace,
             payload=payload,
             headers=headers,
-            empty_on=(),
+            empty_on=empty_on,
             timeout=timeout,
         )
 
@@ -270,7 +270,3 @@ def cache_hit(settings: Settings, namespace: str, key: str, ttl: int | None = No
 def cache_put(settings: Settings, namespace: str, key: str, value: Any) -> None:
     if settings.use_cache:
         cache_write(namespace, key, value)
-
-
-def stopwatch() -> float:
-    return time.perf_counter()

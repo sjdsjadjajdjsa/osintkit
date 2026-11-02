@@ -63,7 +63,7 @@ def root(
     cache_ttl: int = typer.Option(86400, "--cache-ttl", help="Cache lifetime in seconds."),
     resolver: list[str] | None = typer.Option(None, "--resolver", help="DNS resolver IP to use, repeatable."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show collector detail."),
-    version: bool = typer.Option(
+    _version: bool = typer.Option(
         False,
         "--version",
         "-V",
@@ -432,11 +432,12 @@ def list_collectors() -> None:
 @app.command("doctor")
 def doctor_cmd(
     json_out: bool = typer.Option(False, "--json", help="JSON output."),
+    deep: bool = typer.Option(False, "--deep", help="Send a 1-token completion to verify the key."),
 ) -> None:
     """Check the key, endpoint, and writable directories."""
     out = _console()
     settings: Settings = STATE["settings"]  # type: ignore[assignment]
-    checks = asyncio.run(doctor.diagnose(settings))
+    checks = asyncio.run(doctor.diagnose(settings, deep=deep))
     if json_out:
         print(json.dumps([asdict(check) for check in checks], indent=2))
     else:

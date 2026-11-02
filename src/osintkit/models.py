@@ -192,14 +192,6 @@ class Report(BaseModel):
     def ok_collectors(self) -> list[CollectorResult]:
         return [c for c in self.collectors if c.has_data]
 
-    @property
-    def failures(self) -> list[CollectorResult]:
-        return [c for c in self.collectors if not c.ok and not c.skipped]
-
-    @property
-    def skips(self) -> list[CollectorResult]:
-        return [c for c in self.collectors if c.skipped]
-
 
 class PromptBundle(BaseModel):
     """The package handed to the model."""

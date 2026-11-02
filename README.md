@@ -53,6 +53,7 @@ osintkit lookup example.com --only dns_records --skip tcp_ports
 osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
 osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
 osintkit doctor                                  # check key, endpoint, directories
+osintkit doctor --deep                           # also verify the key with a 1-token call
 osintkit schema                                  # JSON schema the model must satisfy
 osintkit prune --days 30                         # delete old cache, logs, reports
 osintkit history --limit 10
@@ -103,8 +104,9 @@ cleanly and the raw collection is still archived.
 ## Troubleshooting
 
 `osintkit doctor` reports the API key state, endpoint reachability, writable directories, and
-which optional source keys are missing. It never echoes the key itself. Exit code is `1` when
-a check fails.
+which optional source keys are missing. It never echoes the key itself. Add `--deep` to send a
+one-token completion, which proves the key and model name actually work rather than just that
+the host answers. Exit code is `1` when a check fails.
 
 ## Storage
 

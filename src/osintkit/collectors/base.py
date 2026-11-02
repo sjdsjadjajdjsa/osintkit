@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import asyncio
 import time
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, replace
 from typing import Any
 
 from .. import errors
@@ -137,27 +136,3 @@ def _has_requirement(requirement: str, ctx: Context) -> bool:
     if requirement == "github":
         return bool(ctx.github_token)
     return True
-
-
-async def gather(
-    target_type: str,
-    ctx: Context,
-    *,
-    only: set[str] | None = None,
-    skip: set[str] | None = None,
-) -> list[CollectorResult]:
-    specs = collectors_for(target_type)
-    if only:
-        specs = [s for s in specs if s.name in only]
-    if skip:
-        specs = [s for s in specs if s.name not in skip]
-    if not specs:
-        return []
-    return list(await asyncio.gather(*(run_collector(s, ctx) for s in specs)))
-
-
-@dataclass(slots=True)
-class CollectorInfo:
-    name: str
-    target_types: tuple[str, ...] = field(default_factory=tuple)
-    description: str = ""

@@ -7,7 +7,6 @@ from collections.abc import Iterable
 
 from rich import box
 from rich.console import Console, Group
-from rich.json import JSON
 from rich.markup import escape
 from rich.panel import Panel
 from rich.table import Table
@@ -234,7 +233,3 @@ def print_prompt(prompt: str, out: Console) -> None:
         if not chunk.startswith("###"):
             chunk = "### " + chunk
         out.print(Panel(chunk.strip(), box=box.ROUNDED, title_align="left"))
-
-
-def print_json_block(data: object, out: Console) -> None:
-    out.print(JSON(json.dumps(data, default=str, ensure_ascii=False)))

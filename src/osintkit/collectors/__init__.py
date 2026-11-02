@@ -13,13 +13,12 @@ from . import (  # noqa: F401  (import order matters: side-effect registration)
     subdomains,
     whois_lookup,
 )
-from .base import REGISTRY, Collector, Context, collectors_for, gather, run_collector
+from .base import REGISTRY, Collector, Context, collectors_for, run_collector
 
 __all__ = [
     "REGISTRY",
     "Collector",
     "Context",
     "collectors_for",
-    "gather",
     "run_collector",
 ]
