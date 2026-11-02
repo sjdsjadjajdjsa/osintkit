@@ -22,7 +22,7 @@ jobs:
       - name: Install
         run: |
           uv venv --python ${{ matrix.python-version }}
-          uv pip install -e '.[dev]'
+          uv sync --frozen --extra dev
       - name: Lint
         run: uvx ruff check src tests
       - name: Test
