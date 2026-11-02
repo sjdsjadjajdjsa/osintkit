@@ -96,3 +96,16 @@ async def test_other_errors_stay_source_errors(settings):
     async with client(settings) as llm:
         with pytest.raises(SourceUnavailable):
             await llm.chat([{"role": "user", "content": "x"}])
+
+
+@respx.mock
+async def test_keyless_provider_sends_no_auth_header(settings):
+    settings.provider = "ollama"
+    settings.api_key = None
+    settings.base_url = "http://localhost:1/v1"
+    route = respx.post("http://localhost:1/v1/chat/completions").mock(
+        return_value=httpx.Response(200, json={"choices": [{"message": {"content": "ok"}}]})
+    )
+    async with LLMClient(settings) as llm:
+        assert await llm.chat([{"role": "user", "content": "x"}]) == "ok"
+    assert "authorization" not in route.calls[0].request.headers

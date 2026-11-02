@@ -212,7 +212,7 @@ async def execute(
             return Outcome(report=report, extra={"prompt": synthesis_prompt}, archived=archived)
 
         try:
-            if not settings.resolved_api_key():
+            if settings.needs_key and not settings.resolved_api_key():
                 raise MissingAPIKey(
                     "No API key. Set API_KEY, pass --api-key, or use --offline for a local report."
                 )

@@ -38,7 +38,7 @@ class LLMClient:
         response_format: Mapping[str, Any] | None = None,
     ) -> str:
         api_key = self.settings.resolved_api_key()
-        if not api_key:
+        if not api_key and self.settings.needs_key:
             raise MissingAPIKey("No API key. Set API_KEY in the environment or pass --api-key.")
 
         payload: dict[str, Any] = {
@@ -57,7 +57,7 @@ class LLMClient:
                 namespace="llm",
                 payload=payload,
                 headers={
-                    "Authorization": f"Bearer {api_key}",
+                    **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
                     "Content-Type": "application/json",
                 },
             )

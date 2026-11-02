@@ -479,3 +479,32 @@ def test_missing_key_mentions_offline(monkeypatch):
     monkeypatch.setattr(pipeline, "LLMClient", None)
     result = runner.invoke(app, ["lookup", "--domain", "example.com"])
     assert "--offline" in " ".join(result.output.split())
+
+
+def test_deepseek_env_selects_provider(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "d" * 30)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    assert jsonish(result.output)["base_url"] == "https://api.deepseek.com/v1"
+
+
+def test_mistral_env_selects_provider(monkeypatch):
+    monkeypatch.setenv("MISTRAL_API_KEY", "m" * 30)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    assert jsonish(result.output)["base_url"] == "https://api.mistral.ai/v1"
+
+
+def test_explicit_provider_beats_env(monkeypatch):
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "d" * 30)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["--provider", "mistral", "lookup", "--domain", "a.com", "--json"])
+    assert jsonish(result.output)["base_url"] == "https://api.mistral.ai/v1"
+
+
+def test_ollama_needs_no_key(monkeypatch):
+    monkeypatch.delenv("API_KEY")
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["--provider", "ollama", "lookup", "--domain", "a.com", "--json"])
+    assert result.exit_code == 0
+    assert jsonish(result.output)["base_url"] == "http://localhost:11434/v1"

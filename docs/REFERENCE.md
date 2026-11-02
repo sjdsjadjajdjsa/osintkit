@@ -34,11 +34,20 @@ osintkit --provider openrouter ...
 osintkit --base-url https://gateway.internal/v1 --model house-model ...
 ```
 
-| `--provider` | Endpoint | Default model | Auto-selected by |
+| `--provider` | Endpoint | Default model | Key variable |
 | --- | --- | --- | --- |
-| `venice` (default) | `api.venice.ai/api/v1` | `deepseek-v4-1-flash` | anything else |
-| `openrouter` | `openrouter.ai/api/v1` | `deepseek/deepseek-v4.1-flash-1017` | `sk-or-` key |
-| `openai` | `api.openai.com/v1` | `gpt-4.1-mini` | `sk-proj-` key |
+| `venice` (default) | `api.venice.ai/api/v1` | `deepseek-v4-1-flash` | `API_KEY`, `VENICE_API_KEY` |
+| `openrouter` | `openrouter.ai/api/v1` | `deepseek/deepseek-v4.1-flash-1017` | `OPENROUTER_API_KEY`, `sk-or-` keys |
+| `openai` | `api.openai.com/v1` | `gpt-4.1-mini` | `OPENAI_API_KEY`, `sk-proj-` keys |
+| `deepseek` | `api.deepseek.com/v1` | `deepseek-chat` | `DEEPSEEK_API_KEY` |
+| `mistral` | `api.mistral.ai/v1` | `mistral-small-latest` | `MISTRAL_API_KEY` |
+| `groq` | `api.groq.com/openai/v1` | `llama-3.3-70b-versatile` | `GROQ_API_KEY`, `gsk_` keys |
+| `together` | `api.together.xyz/v1` | Llama 3.3 70B | `TOGETHER_API_KEY` |
+| `anthropic` | `api.anthropic.com/v1` | `claude-sonnet-4-5` | `ANTHROPIC_API_KEY`, `sk-ant-` keys |
+| `ollama` | `localhost:11434/v1` | `llama3.2` | none |
+
+Set a provider-specific variable and that provider is chosen; `API_KEY` alone falls back to the
+default. Recognisable key prefixes override that inference. `--provider` beats both.
 
 Explicit `--base-url` and `--model` beat both the provider and the prefix. Temperature is 0.3,
 `--max-tokens` defaults to 2400.

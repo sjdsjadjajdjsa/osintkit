@@ -21,10 +21,12 @@ from rich.table import Table
 from . import __version__, diff, doctor, pipeline, render, retention
 from .collectors import REGISTRY
 from .config import (
+    GENERIC_KEY_ENVS,
     PROVIDERS,
     Settings,
     cache_clear,
     cache_stats,
+    provider_from_env,
     provider_from_key,
 )
 from .errors import OsintKitError, TargetParseError
@@ -61,7 +63,7 @@ def _version_callback(value: bool) -> None:
 @app.callback()
 def root(
     provider: str | None = typer.Option(
-        None, "--provider", help="Endpoint preset: venice, openrouter, or openai."
+        None, "--provider", help="Endpoint preset; see docs/REFERENCE.md#providers."
     ),
     base_url: str | None = typer.Option(
         None, "--base-url", help="OpenAI-compatible base URL (overrides the provider)."
@@ -88,10 +90,17 @@ def root(
 ) -> None:
     if provider and provider not in PROVIDERS:
         raise typer.BadParameter(f"unknown provider {provider!r}; choose from {', '.join(PROVIDERS)}")
-    effective_key = api_key or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
-    chosen = provider or provider_from_key(effective_key) or "venice"
+    generic_env = next((os.environ[name] for name in GENERIC_KEY_ENVS if os.environ.get(name)), None)
+    chosen = (
+        provider
+        or provider_from_key(api_key)
+        or provider_from_env()
+        or provider_from_key(generic_env)
+        or "venice"
+    )
     preset = PROVIDERS[chosen]
     settings = Settings(
+        provider=chosen,
         base_url=base_url or preset[0],
         model=model or preset[1],
         api_key=api_key,

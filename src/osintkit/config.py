@@ -23,8 +23,31 @@ PROVIDERS: dict[str, tuple[str, str]] = {
     "venice": (DEFAULT_BASE_URL, DEFAULT_MODEL),
     "openrouter": ("https://openrouter.ai/api/v1", "deepseek/deepseek-v4.1-flash-1017"),
     "openai": ("https://api.openai.com/v1", "gpt-4.1-mini"),
+    "deepseek": ("https://api.deepseek.com/v1", "deepseek-chat"),
+    "mistral": ("https://api.mistral.ai/v1", "mistral-small-latest"),
+    "groq": ("https://api.groq.com/openai/v1", "llama-3.3-70b-versatile"),
+    "together": ("https://api.together.xyz/v1", "meta-llama/Llama-3.3-70B-Instruct-Turbo"),
+    "anthropic": ("https://api.anthropic.com/v1", "claude-sonnet-4-5"),
+    "ollama": ("http://localhost:11434/v1", "llama3.2"),
 }
-KEY_PREFIXES: dict[str, str] = {"sk-or-": "openrouter", "sk-proj-": "openai"}
+KEYLESS_PROVIDERS = frozenset({"ollama"})
+KEY_PREFIXES: dict[str, str] = {
+    "sk-or-": "openrouter",
+    "sk-proj-": "openai",
+    "gsk_": "groq",
+    "sk-ant-": "anthropic",
+}
+PROVIDER_ENV: dict[str, str] = {
+    "VENICE_API_KEY": "venice",
+    "OPENROUTER_API_KEY": "openrouter",
+    "OPENAI_API_KEY": "openai",
+    "DEEPSEEK_API_KEY": "deepseek",
+    "MISTRAL_API_KEY": "mistral",
+    "GROQ_API_KEY": "groq",
+    "TOGETHER_API_KEY": "together",
+    "ANTHROPIC_API_KEY": "anthropic",
+}
+GENERIC_KEY_ENVS = ("API_KEY",)
 
 
 def provider_from_key(api_key: str | None) -> str | None:
@@ -33,6 +56,14 @@ def provider_from_key(api_key: str | None) -> str | None:
         return None
     for prefix, provider in KEY_PREFIXES.items():
         if api_key.startswith(prefix):
+            return provider
+    return None
+
+
+def provider_from_env() -> str | None:
+    """Infer a provider from whichever provider-specific variable is set."""
+    for variable, provider in PROVIDER_ENV.items():
+        if os.environ.get(variable):
             return provider
     return None
 
@@ -67,6 +98,7 @@ class Settings:
 
     target: str = ""
     target_type: str = ""
+    provider: str = "venice"
     base_url: str = DEFAULT_BASE_URL
     model: str = DEFAULT_MODEL
     api_key: str | None = None
@@ -95,7 +127,19 @@ class Settings:
         return os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN") or None
 
     def resolved_api_key(self) -> str | None:
-        return self.api_key or os.environ.get("API_KEY") or os.environ.get("OPENAI_API_KEY")
+        if self.api_key:
+            return self.api_key
+        for variable, provider in PROVIDER_ENV.items():
+            if provider == self.provider and os.environ.get(variable):
+                return os.environ[variable]
+        for variable in GENERIC_KEY_ENVS:
+            if os.environ.get(variable):
+                return os.environ[variable]
+        return None
+
+    @property
+    def needs_key(self) -> bool:
+        return self.provider not in KEYLESS_PROVIDERS
 
 
 def _cache_key(namespace: str, key: str) -> Path:

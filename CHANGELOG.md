@@ -6,6 +6,18 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.3.0 — 2026-11-02
+
+### Added
+
+- providers for DeepSeek, Mistral, Groq, Together, Anthropic, and local Ollama
+- provider selection from its own environment variable (`DEEPSEEK_API_KEY`, `MISTRAL_API_KEY`, ...)
+- keyless providers (Ollama) work without any key, including in `doctor`
+
+### Changed
+
+- `doctor` reports the provider and where the key came from
+
 ## 0.2.0 — 2026-11-02
 
 ### Added

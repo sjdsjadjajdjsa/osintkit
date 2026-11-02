@@ -7,7 +7,7 @@ import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 
-from .config import Settings, cache_dir, ensure_dirs, log_dir
+from .config import PROVIDER_ENV, Settings, cache_dir, ensure_dirs, log_dir
 from .http import HttpClient
 
 
@@ -30,10 +30,10 @@ def _writable(path: Path) -> bool:
 
 async def _reach_endpoint(settings: Settings, deep: bool = False) -> Check:
     key = settings.resolved_api_key()
-    if not key:
+    if settings.needs_key and not key:
         return Check("model endpoint", "warn", "no API key; synthesis will fail, dry runs still work")
     base = settings.base_url.rstrip("/")
-    headers = {"Authorization": f"Bearer {key}"}
+    headers = {"Authorization": f"Bearer {key}"} if key else {}
     fresh = replace(settings, use_cache=False)
 
     try:
@@ -81,14 +81,32 @@ async def _reach_endpoint(settings: Settings, deep: bool = False) -> Check:
     return Check("model endpoint", "ok", f"{base} accepted a completion for {settings.model}")
 
 
+def _key_source(settings: Settings) -> str | None:
+    if settings.api_key:
+        return "--api-key"
+    for variable, provider in PROVIDER_ENV.items():
+        if provider == settings.provider and os.environ.get(variable):
+            return variable
+    for variable in ("API_KEY",):
+        if os.environ.get(variable):
+            return variable
+    return None
+
+
 def collect_checks(settings: Settings) -> list[Check]:
     key = settings.resolved_api_key()
+    source = _key_source(settings)
+    if not settings.needs_key:
+        key_check = Check("api key", "ok", f"not needed for {settings.provider}")
+    elif key:
+        key_check = Check("api key", "ok", f"from {source}")
+    else:
+        key_check = Check(
+            "api key", "warn", f"no key for {settings.provider}; set one or use --offline"
+        )
     checks = [
-        Check(
-            "api key",
-            "ok" if key else "warn",
-            "set" if key else "API_KEY is not set",
-        ),
+        Check("provider", "ok", settings.provider),
+        key_check,
         Check(
             "cache dir",
             "ok" if _writable(cache_dir()) else "fail",
