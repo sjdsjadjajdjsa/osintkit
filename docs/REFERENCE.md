@@ -8,7 +8,7 @@ Everything the README leaves out: every flag, every collector, storage, and fail
 | --- | --- | --- | --- |
 | `infostealer` | email / username / domain | Hudson Rock stealer logs | no |
 | `hibp_breaches`, `hibp_pastes` | email | Have I Been Pwned | yes |
-| `xposed_or_not`, `leakcheck_public` | email | free public breach indexes | no |
+| `xposed_or_not`, `xposed_analytics`, `leakcheck_public` | email | free public breach indexes | no |
 | `gravatar` | email | Gravatar | no |
 | `crt_sh_subdomains`, `crt_sh_certificates` | domain | crt.sh | no |
 | `crt_sh_organization` | company | crt.sh organisation search, with apex-domain identity fallback | no |
@@ -61,6 +61,13 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 
 Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
+
+## Self-check
+
+After synthesis every breach name, date, subdomain, and account URL is compared with the supplied
+data. Anything the model asserted that no source returned is listed under a "not found in source
+data" note, so drift is visible instead of plausible. Checks only run for source families that
+were actually collected.
 
 ## Info-stealer logs
 

@@ -13,6 +13,7 @@ from . import (  # noqa: F401  (import order matters: side-effect registration)
     ports,
     subdomains,
     whois_lookup,
+    xposed_analytics,
 )
 from .base import REGISTRY, Collector, Context, collectors_for, run_collector
 

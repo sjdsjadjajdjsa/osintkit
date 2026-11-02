@@ -114,6 +114,8 @@ the model fail.
   undercut.
 - **Cached everything.** 24h default, shorter for volatile sources; repeat prompts cost nothing.
 - **Validated output.** Strict JSON schema, one repair round-trip, then a clean failure.
+- **Self-checked claims.** Every breach, date, host, and account URL is compared back to the
+  collected data; anything unsupported is called out.
 
 ## Collectors
 

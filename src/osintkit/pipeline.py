@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import catalogue, collectors, normalise, offline, render, retention, synthesis
+from . import catalogue, collectors, normalise, offline, render, retention, synthesis, verify
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -248,6 +248,9 @@ async def execute(
                     report.analysis.risk_level = normalise.apply_floor(
                         report.analysis.risk_level, signals.get("risk_floor", "low")
                     )
+                    unsupported = verify.claims(report.analysis, prompt_results)
+                    if unsupported:
+                        report.notes.append("not found in source data: " + "; ".join(unsupported))
                     if not report.analysis.summary.strip():
                         fallback = offline.build(prompt_results, report.notes, target, narrated=True)
                         report.analysis.summary = fallback.summary

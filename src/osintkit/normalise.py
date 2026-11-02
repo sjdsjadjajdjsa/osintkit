@@ -7,7 +7,7 @@ from typing import Any
 
 from .models import CollectorResult
 
-BREACH_SOURCES = frozenset({"hibp_breaches", "xposed_or_not", "leakcheck_public"})
+BREACH_SOURCES = frozenset({"hibp_breaches", "xposed_or_not", "xposed_analytics", "leakcheck_public"})
 KEY_RE = re.compile(r"[^a-z0-9]+")
 CREDENTIAL_RE = re.compile(r"pass|hash|credential|secret|token|api[ _-]?key", re.I)
 SEVERITY = ("low", "medium", "high")

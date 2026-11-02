@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.7.0 — 2026-11-02
+
+### Added
+
+- `xposed_analytics`: dated, typed, verified breach membership and pastes, keyless
+- post-synthesis self-check listing any claimed breach, date, host, or account URL absent from
+  the supplied data
+
 ## 0.6.0 — 2026-11-02
 
 ### Added
