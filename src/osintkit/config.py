@@ -56,6 +56,7 @@ class Settings:
     temperature: float = DEFAULT_TEMPERATURE
     max_tokens: int = 2400
     timeout: float = DEFAULT_TIMEOUT
+    max_connections: int = 16
     max_attempts: int = DEFAULT_MAX_ATTEMPTS
     use_cache: bool = True
     cache_ttl: int = DEFAULT_CACHE_TTL

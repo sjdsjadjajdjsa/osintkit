@@ -61,7 +61,7 @@ osintkit collectors
 ```
 
 Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--max-tokens` (default
-2400), `--timeout`,
+2400), `--timeout`, `--max-connections` (default 16),
 `--max-attempts` (default 3), `--no-cache`, `--cache-ttl`, `--resolver` (repeatable, for
 `dns_records`/`passive_subdomains`), `-v` (show raw collector payloads).
 

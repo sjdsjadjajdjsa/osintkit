@@ -134,3 +134,9 @@ async def test_failed_inflight_task_does_not_stick(http):
         await http.get_json(URL, namespace="d")
     respx.get(URL).mock(return_value=httpx.Response(200, json={"ok": True}))
     assert await http.get_json(URL, namespace="d") == {"ok": True}
+
+
+async def test_connection_limit_is_applied(settings):
+    settings.max_connections = 4
+    async with HttpClient(settings) as client:
+        assert client._client._transport._pool._max_connections == 4

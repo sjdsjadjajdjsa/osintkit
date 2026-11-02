@@ -30,6 +30,7 @@ class HttpClient:
         self._own_client = client is None
         self._client = client or httpx.AsyncClient(
             timeout=httpx.Timeout(settings.timeout),
+            limits=httpx.Limits(max_connections=settings.max_connections),
             follow_redirects=True,
             headers={"User-Agent": USER_AGENT, "Accept": "application/json"},
         )

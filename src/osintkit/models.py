@@ -177,6 +177,7 @@ class Analysis(BaseModel):
 class Report(BaseModel):
     """A rendered-ready record of one target lookup."""
 
+    schema_version: str = "1"
     target: str
     target_type: str
     generated_at: str = Field(default_factory=_utcnow_iso)

@@ -66,3 +66,14 @@ def test_settings_defaults_match_spec():
     assert settings.base_url == "https://api.venice.ai/api/v1"
     assert settings.model == "deepseek-v4-1-flash-1017-uncensored"
     assert settings.max_attempts == 3
+
+
+async def test_report_carries_schema_version(settings, monkeypatch, console):
+    async def fake(ctx):
+        return {}
+
+    monkeypatch.setattr(base, "REGISTRY", [base.Collector(name="x", target_types=("email",), func=fake)])
+    monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
+    settings.dry_run = True
+    outcome = await pipeline.execute("alice@example.com", settings, RunLogger("ver"), console)
+    assert outcome.report.model_dump()["schema_version"] == "1"
