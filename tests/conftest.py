@@ -12,6 +12,7 @@ from osintkit.http import HttpClient
 def isolated_home(tmp_path: Path, monkeypatch):
     home = tmp_path / "home"
     monkeypatch.setenv("OSINTKIT_HOME", str(home))
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(home / "config"))
     monkeypatch.delenv("API_KEY", raising=False)
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     monkeypatch.delenv("HIBP_API_KEY", raising=False)

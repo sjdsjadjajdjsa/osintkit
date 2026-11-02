@@ -42,20 +42,24 @@ checksums, and `pip install -e .` works from a clone. Python 3.12+ only.
 ## Quick start
 
 ```bash
-export API_KEY=...                 # or DEEPSEEK_API_KEY, MISTRAL_API_KEY, ...
-osintkit doctor --deep             # prove the key and endpoint work
+osintkit init                      # pick a provider, paste a key once
 osintkit lookup alice@example.com
 ```
+
+`init` stores the provider and key in `~/.config/osintkit/config.toml` (mode 600), checks them
+with a one-token request, and afterwards needs no flags and no exports. `osintkit config` shows
+what is stored, masked; `osintkit lookup` just works.
+
+Environment variables still win over the file, so `DEEPSEEK_API_KEY=... osintkit lookup ...`
+overrides the stored provider for one run.
 
 No key? `osintkit lookup example.com --offline` builds the whole report locally from rule checks,
 no model involved. `--raw` gives the collected JSON and `--dry-run` prints the prompt a model
 would receive.
 
-Any OpenAI-compatible endpoint works: export the provider's own variable (`DEEPSEEK_API_KEY`,
-`MISTRAL_API_KEY`, `GROQ_API_KEY`, `VENICE_API_KEY`, `OPENROUTER_API_KEY`, `OPENAI_API_KEY`,
-`TOGETHER_API_KEY`, `ANTHROPIC_API_KEY`) and that provider is used. `--provider` also accepts
-`ollama` for a local server with no key. `--base-url` and `--model` always win, and the full
-preset table is in [docs/REFERENCE.md](docs/REFERENCE.md#providers).
+Any OpenAI-compatible endpoint works. `init --provider ollama` needs no key for a local server;
+`--provider`, `--base-url`, and `--model` cover everything else. The preset table, key variables,
+and precedence order are in [docs/REFERENCE.md](docs/REFERENCE.md#providers).
 
 Optional keys: `HIBP_API_KEY` turns on Have I Been Pwned, `GITHUB_TOKEN` lifts GitHub from 60 to
 5000 requests/hour. Everything else needs no credentials.

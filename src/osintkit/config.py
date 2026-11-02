@@ -60,6 +60,13 @@ def provider_from_key(api_key: str | None) -> str | None:
     return None
 
 
+def env_key_for(provider: str) -> str | None:
+    for variable, name in PROVIDER_ENV.items():
+        if name == provider and os.environ.get(variable):
+            return os.environ[variable]
+    return None
+
+
 def provider_from_env() -> str | None:
     """Infer a provider from whichever provider-specific variable is set."""
     for variable, provider in PROVIDER_ENV.items():

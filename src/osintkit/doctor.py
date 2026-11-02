@@ -7,6 +7,7 @@ import tempfile
 from dataclasses import dataclass, replace
 from pathlib import Path
 
+from . import userconfig
 from .config import PROVIDER_ENV, Settings, cache_dir, ensure_dirs, log_dir
 from .http import HttpClient
 
@@ -102,8 +103,14 @@ def collect_checks(settings: Settings) -> list[Check]:
         key_check = Check("api key", "ok", f"from {source}")
     else:
         key_check = Check("api key", "warn", f"no key for {settings.provider}; set one or use --offline")
+    config = userconfig.config_path()
     checks = [
         Check("provider", "ok", settings.provider),
+        Check(
+            "config file",
+            "ok" if config.exists() else "warn",
+            str(config) if config.exists() else f"none at {config}; run osintkit init",
+        ),
         key_check,
         Check(
             "cache dir",

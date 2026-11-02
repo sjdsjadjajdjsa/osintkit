@@ -508,3 +508,113 @@ def test_ollama_needs_no_key(monkeypatch):
     result = runner.invoke(app, ["--provider", "ollama", "lookup", "--domain", "a.com", "--json"])
     assert result.exit_code == 0
     assert jsonish(result.output)["base_url"] == "http://localhost:11434/v1"
+
+
+@pytest.fixture
+def xdg(monkeypatch, tmp_path):
+    monkeypatch.setenv("XDG_CONFIG_HOME", str(tmp_path / "xdg"))
+
+
+def test_init_writes_config_and_verifies(monkeypatch, xdg):
+    import httpx
+    import respx
+
+    from osintkit import userconfig
+
+    with respx.mock:
+        respx.get("https://api.deepseek.com/v1/models").mock(return_value=httpx.Response(200, json={}))
+        respx.post("https://api.deepseek.com/v1/chat/completions").mock(
+            return_value=httpx.Response(200, json={"choices": [{"message": {"content": "p"}}]})
+        )
+        result = runner.invoke(app, ["init", "--provider", "deepseek", "--api-key", "sk-" + "d" * 30])
+    assert result.exit_code == 0
+    stored = userconfig.load()
+    assert stored["provider"] == "deepseek"
+    assert "try: osintkit lookup" in result.output
+
+
+def test_init_refuses_existing_without_force(xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice"})
+    result = runner.invoke(app, ["init", "--api-key", "k" * 30, "--no-verify"])
+    assert result.exit_code == 1
+    assert "already exists" in result.output
+
+
+def test_init_force_replaces(xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "old"})
+    result = runner.invoke(
+        app, ["init", "--provider", "mistral", "--api-key", "m" * 30, "--force", "--no-verify"]
+    )
+    assert result.exit_code == 0
+    assert userconfig.load()["provider"] == "mistral"
+
+
+def test_init_unknown_provider(xdg):
+    result = runner.invoke(app, ["init", "--provider", "nope", "--api-key", "k", "--no-verify"])
+    assert result.exit_code == 2
+    assert "unknown provider" in result.output
+
+
+def test_init_ollama_needs_no_key(xdg, monkeypatch):
+    from osintkit import userconfig
+
+    monkeypatch.delenv("API_KEY", raising=False)
+    result = runner.invoke(app, ["init", "--provider", "ollama", "--no-verify"])
+    assert result.exit_code == 0
+    assert "api_key" not in userconfig.load()
+
+
+def test_config_masks_and_reveals(xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "sk-venice-abcdef123456"})
+    masked = runner.invoke(app, ["config"])
+    assert "sk-ven…3456" in masked.output
+    assert "abcdef123456" not in masked.output
+    revealed = runner.invoke(app, ["config", "--reveal"])
+    assert "sk-venice-abcdef123456" in revealed.output
+
+
+def test_config_unset_and_path(xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "model": "m"})
+    removed = runner.invoke(app, ["config", "--unset", "model"])
+    assert removed.exit_code == 0
+    assert "model" not in userconfig.load()
+    path = runner.invoke(app, ["config", "--path"])
+    assert str(userconfig.config_path()) in path.output
+
+
+def test_stored_key_is_used(monkeypatch, xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "stored-key-123"})
+    monkeypatch.delenv("API_KEY")
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    assert result.exit_code == 0
+    assert jsonish(result.output)["base_url"] == "https://api.venice.ai/api/v1"
+
+
+def test_env_beats_stored_provider(monkeypatch, xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "stored"})
+    monkeypatch.setenv("MISTRAL_API_KEY", "m" * 30)
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--json"])
+    assert jsonish(result.output)["base_url"] == "https://api.mistral.ai/v1"
+
+
+def test_flag_beats_stored_config(monkeypatch, xdg):
+    from osintkit import userconfig
+
+    userconfig.save({"provider": "venice", "api_key": "stored", "model": "stored-model"})
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    result = runner.invoke(app, ["--model", "flag-model", "lookup", "--domain", "a.com", "--json"])
+    assert jsonish(result.output)["model"] == "flag-model"

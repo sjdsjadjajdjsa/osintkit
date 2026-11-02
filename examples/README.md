@@ -43,3 +43,10 @@ No key at all:
 osintkit lookup --domain example.com --offline
 osintkit batch --file targets.csv --offline --json
 ```
+
+Set a key once and forget flags:
+
+```bash
+osintkit init
+osintkit lookup --domain example.com
+```

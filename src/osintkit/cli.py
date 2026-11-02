@@ -18,14 +18,17 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, diff, doctor, pipeline, render, retention
+from . import __version__, diff, doctor, pipeline, render, retention, userconfig
 from .collectors import REGISTRY
 from .config import (
+    DEFAULT_RESOLVERS,
     GENERIC_KEY_ENVS,
+    KEYLESS_PROVIDERS,
     PROVIDERS,
     Settings,
     cache_clear,
     cache_stats,
+    env_key_for,
     provider_from_env,
     provider_from_key,
 )
@@ -90,19 +93,24 @@ def root(
 ) -> None:
     if provider and provider not in PROVIDERS:
         raise typer.BadParameter(f"unknown provider {provider!r}; choose from {', '.join(PROVIDERS)}")
+    stored = userconfig.load()
     generic_env = next((os.environ[name] for name in GENERIC_KEY_ENVS if os.environ.get(name)), None)
     chosen = (
         provider
         or provider_from_key(api_key)
         or provider_from_env()
         or provider_from_key(generic_env)
+        or stored.get("provider")
         or "venice"
     )
     preset = PROVIDERS[chosen]
+    if not api_key and stored.get("provider") in (None, chosen):
+        api_key = stored.get("api_key")
+    config_applies = stored.get("provider") in (None, chosen)
     settings = Settings(
         provider=chosen,
-        base_url=base_url or preset[0],
-        model=model or preset[1],
+        base_url=base_url or (stored.get("base_url") if config_applies else None) or preset[0],
+        model=model or (stored.get("model") if config_applies else None) or preset[1],
         api_key=api_key,
         temperature=temperature,
         max_tokens=max_tokens,
@@ -112,6 +120,7 @@ def root(
         use_cache=not no_cache,
         cache_ttl=cache_ttl,
         verbose=verbose,
+        resolvers=stored.get("resolvers") or list(DEFAULT_RESOLVERS),
     )
     if resolver:
         for entry in resolver:
@@ -545,6 +554,110 @@ def list_collectors(
             spec.description,
         )
     render.console().print(table)
+
+
+@app.command()
+def init(
+    provider: str | None = typer.Option(None, "--provider", help="Provider to store."),
+    api_key: str | None = typer.Option(None, "--api-key", help="Key to store."),
+    model: str | None = typer.Option(None, "--model", help="Default model to store."),
+    base_url: str | None = typer.Option(None, "--base-url", help="Custom endpoint to store."),
+    force: bool = typer.Option(False, "--force", help="Replace an existing config."),
+    verify: bool = typer.Option(True, "--verify/--no-verify", help="Check the key afterwards."),
+) -> None:
+    """Store a provider and key once, then just run lookups."""
+    out = _console()
+    path = userconfig.config_path()
+    if path.exists() and not force:
+        out.print(f"[yellow]config already exists[/yellow] {path}; pass --force to replace")
+        raise typer.Exit(1)
+
+    stored = userconfig.load()
+    detected = (
+        provider
+        or provider_from_env()
+        or provider_from_key(os.environ.get("API_KEY"))
+        or stored.get("provider")
+        or "venice"
+    )
+    chosen = provider or typer.prompt("Provider", default=detected).strip()
+    if chosen not in PROVIDERS:
+        out.print(f"[red]unknown provider {chosen!r}[/red]; choose from {', '.join(PROVIDERS)}")
+        raise typer.Exit(2)
+
+    data: dict[str, object] = {"provider": chosen}
+    if base_url:
+        data["base_url"] = base_url
+    if model:
+        data["model"] = model
+
+    if chosen not in KEYLESS_PROVIDERS:
+        key = (
+            api_key
+            or env_key_for(chosen)
+            or (stored.get("api_key") if stored.get("provider") == chosen else None)
+            or typer.prompt("API key", hide_input=True).strip()
+        )
+        if not key:
+            out.print("[red]no key given[/red]")
+            raise typer.Exit(2)
+        data["api_key"] = key
+
+    written = userconfig.save(data)
+    out.print(f"[green]stored[/green] {written} (mode 600)")
+    out.print(f"provider: {chosen}")
+    if data.get("api_key"):
+        out.print(f"key: {userconfig.mask(str(data['api_key']))}")
+
+    if verify:
+        probe = Settings(
+            provider=chosen,
+            base_url=str(data.get("base_url") or PROVIDERS[chosen][0]),
+            model=str(data.get("model") or PROVIDERS[chosen][1]),
+            api_key=str(data["api_key"]) if data.get("api_key") else None,
+            use_cache=False,
+        )
+        checks = asyncio.run(doctor.diagnose(probe, deep=True))
+        endpoint = checks[-1]
+        if doctor.failed(checks):
+            out.print(f"[red]{endpoint.detail}[/red]")
+            out.print("[dim]config kept; fix it with osintkit init --force[/dim]")
+            raise typer.Exit(1)
+        out.print(f"[green]{endpoint.detail}[/green]")
+    out.print("[dim]try: osintkit lookup --domain example.com[/dim]")
+
+
+@app.command("config")
+def config_cmd(
+    reveal: bool = typer.Option(False, "--reveal", help="Show the key in full."),
+    unset: list[str] | None = typer.Option(None, "--unset", help="Remove a key."),
+    path_only: bool = typer.Option(False, "--path", help="Print the config path only."),
+) -> None:
+    """Show, reveal, or clear the stored configuration."""
+    out = _console()
+    if path_only:
+        print(userconfig.config_path())
+        return
+    stored = userconfig.load()
+    if unset:
+        for name in unset:
+            stored.pop(name, None)
+        userconfig.save(stored)
+        out.print(f"[green]removed[/green] {', '.join(unset)}")
+        stored = userconfig.load()
+    if not stored:
+        out.print(f"[dim]no config at {userconfig.config_path()}[/dim]")
+        return
+    out.print(f"[dim]{userconfig.config_path()}[/dim]")
+    table = Table(box=box.SIMPLE_HEAD, title="config")
+    table.add_column("key")
+    table.add_column("value")
+    for name, value in stored.items():
+        shown: object = value
+        if name == "api_key" and isinstance(value, str) and not reveal:
+            shown = userconfig.mask(value)
+        table.add_row(name, render.escape(str(shown)))
+    out.print(table)
 
 
 @app.command("doctor")
