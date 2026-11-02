@@ -14,7 +14,7 @@ SEVERITY = ("low", "medium", "high")
 MAX_PROMPT_BREACHES = 15
 
 
-def signals_for(merged: list[dict[str, Any]]) -> dict[str, Any]:
+def signals_for(merged: list[dict[str, Any]], infections: int = 0) -> dict[str, Any]:
     """Compute risk signals the model can check itself against."""
     credential = [
         entry
@@ -22,10 +22,12 @@ def signals_for(merged: list[dict[str, Any]]) -> dict[str, Any]:
         if any(CREDENTIAL_RE.search(str(kind)) for kind in entry.get("data_types", []))
     ]
     count = len(merged)
+    floor = "high" if infections else _floor(count, len(credential))
     return {
         "breach_count": count,
         "credential_bearing": len(credential),
-        "risk_floor": _floor(count, len(credential)),
+        "stealer_infections": infections,
+        "risk_floor": floor,
     }
 
 

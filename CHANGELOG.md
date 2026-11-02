@@ -6,6 +6,13 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.6.0 — 2026-11-02
+
+### Added
+
+- `infostealer` collector for Hudson Rock stealer logs across email, username, and domain
+- any stealer infection forces a high risk floor and a rotate-everything recommendation
+
 ## 0.5.0 — 2026-11-02
 
 ### Added

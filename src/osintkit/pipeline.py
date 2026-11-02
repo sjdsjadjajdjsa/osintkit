@@ -186,7 +186,11 @@ async def execute(
             logger.event("breaches_merged", duplicates=duplicates)
 
         merged_breaches = next((r.data for r in prompt_results if r.collector == "breach_index"), [])
-        signals = normalise.signals_for(merged_breaches)
+        stealer = next((r.data for r in prompt_results if r.collector == "infostealer"), {})
+        infections = int((stealer or {}).get("infections") or 0)
+        signals = normalise.signals_for(merged_breaches, infections)
+        if infections:
+            report.notes.append(f"{infections} info-stealer infection(s) observed")
 
         bundle = PromptBundle(
             target=target,

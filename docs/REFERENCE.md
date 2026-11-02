@@ -6,6 +6,7 @@ Everything the README leaves out: every flag, every collector, storage, and fail
 
 | Collector | Targets | Source | Needs key |
 | --- | --- | --- | --- |
+| `infostealer` | email / username / domain | Hudson Rock stealer logs | no |
 | `hibp_breaches`, `hibp_pastes` | email | Have I Been Pwned | yes |
 | `xposed_or_not`, `leakcheck_public` | email | free public breach indexes | no |
 | `gravatar` | email | Gravatar | no |
@@ -60,6 +61,15 @@ Explicit `--base-url` and `--model` beat both the provider and the prefix. Tempe
 
 Per-command: `--json`, `--markdown`, `-o/--out`, `--raw`, `--offline`, `--dry-run`, `--only`, `--skip`,
 `--ports`, `--fail-fast`, `-c/--concurrency`, `--limit`, `--show`, `--days`, `--clear`, `--deep`.
+
+## Info-stealer logs
+
+`infostealer` queries Hudson Rock's keyless endpoint for infections that saved credentials on a
+compromised machine. It returns the infection count, dates, hostnames, IPs, antivirus state, and
+masked logins and passwords. Any infection forces a `high` risk floor; masked values are shown as
+the source provides them and are not usable as credentials.
+
+The address goes to Hudson Rock; nothing else does.
 
 ## Breach catalogue enrichment
 

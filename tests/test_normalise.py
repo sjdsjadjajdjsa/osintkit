@@ -116,3 +116,12 @@ def test_dict_shaped_sources_are_merged():
     row = next(r for r in kept if r.collector == "breach_index").data[0]
     assert row["sources"] == ["leakcheck_public", "xposedornot"]
     assert row["date"] == "2020-01-01"
+
+
+def test_infections_force_a_high_floor():
+    assert normalise.signals_for([], infections=1)["risk_floor"] == "high"
+    assert normalise.signals_for([], infections=0)["risk_floor"] == "low"
+
+
+def test_infections_are_counted_in_signals():
+    assert normalise.signals_for([], infections=3)["stealer_infections"] == 3

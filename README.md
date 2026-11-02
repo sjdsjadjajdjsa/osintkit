@@ -106,6 +106,8 @@ the model fail.
   and XposedOrNot catalogues. Those catalogues are free; only HIBP *account* checks need a key.
 - **Email domains follow the address.** An email lookup also checks the domain's DNS, mail
   posture, and WHOIS, marked as derived.
+- **Info-stealer logs.** Hudson Rock reports machines infected by stealers that saved
+  credentials, with dates and hostnames; one infection forces a high risk floor.
 - **Risk floor.** Breach count and credential types set a floor the model may exceed but never
   undercut.
 - **Cached everything.** 24h default, shorter for volatile sources; repeat prompts cost nothing.
@@ -126,6 +128,9 @@ Breach name lists are free; breach *metadata* is what makes them useful. Every r
 against the public HIBP and XposedOrNot catalogues for date, exposed fields, and record count, so
 the report can say "LinkedIn, 2021-06, emails and password hashes" instead of a bare name. Add a
 `HIBP_API_KEY` (about $4/month) to get per-account membership with the same metadata, plus pastes.
+
+Stealer logs matter more than most breaches: the credentials were live on an infected machine,
+not just leaked years ago. They are queried for every target type, keyless.
 
 Passwords are checked separately with `osintkit password`: Pwned Passwords covers hundreds of
 millions of leaked passwords, needs no key, and only the first five SHA-1 characters leave the

@@ -8,6 +8,7 @@ from . import (  # noqa: F401  (import order matters: side-effect registration)
     ct,
     dns,
     github,
+    infostealer,
     pastes,
     ports,
     subdomains,

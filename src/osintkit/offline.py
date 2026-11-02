@@ -91,6 +91,15 @@ def _infrastructure(results: list[CollectorResult], report_notes: list[str]) -> 
     if isinstance(wildcard, dict) and wildcard.get("wildcard"):
         notes.append("Wildcard DNS is enabled, so unknown labels resolve")
 
+    stealer = _data(results, "infostealer")
+    if isinstance(stealer, dict) and stealer.get("infections"):
+        first = (stealer.get("stealers") or [{}])[0]
+        notes.append(
+            f"{stealer['infections']} info-stealer infection(s)"
+            + (f", latest {first.get('date')}" if first.get("date") else "")
+            + (f" on {first.get('computer')}" if first.get("computer") else "")
+        )
+
     whois = _data(results, "whois_registration")
     if isinstance(whois, dict) and whois.get("registrar"):
         parts = [f"registrar {whois['registrar']}"]
@@ -117,9 +126,16 @@ def _infrastructure(results: list[CollectorResult], report_notes: list[str]) -> 
 
 
 def _recommendations(
-    creds: int, mail: dict | None, wildcard: bool, ports: list[int], breach_count: int
+    creds: int,
+    mail: dict | None,
+    wildcard: bool,
+    ports: list[int],
+    breach_count: int,
+    infections: int = 0,
 ) -> list[str]:
     recs: list[str] = []
+    if infections:
+        recs.append("Change every password saved on the infected machine, then sign out all sessions")
     if creds:
         recs.append("Rotate passwords for the affected services and enable MFA where offered")
     elif breach_count:
@@ -204,5 +220,6 @@ def build(
             wildcard,
             risky,
             signals["breach_count"],
+            int((_data(results, "infostealer") or {}).get("infections") or 0),
         ),
     )
