@@ -78,9 +78,7 @@ def collect_checks(settings: Settings) -> list[Check]:
         ("GitHub", "GITHUB_TOKEN", "GitHub is limited to 60 requests/hour"),
     ):
         present = bool(os.environ.get(variable))
-        checks.append(
-            Check(name, "ok" if present else "warn", "set" if present else why)
-        )
+        checks.append(Check(name, "ok" if present else "warn", "set" if present else why))
     if key:
         checks.append(Check("api key shape", "ok" if len(key) >= 20 else "warn", f"{len(key)} chars"))
     return checks

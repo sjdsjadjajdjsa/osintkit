@@ -37,9 +37,7 @@ async def test_leakcheck_sources_are_deduped(make_context):
         return_value=httpx.Response(
             200,
             json={
-                "result": [
-                    {"sources": [{"name": "Acme", "date": "2020"}, {"name": "Acme", "date": "2021"}]}
-                ]
+                "result": [{"sources": [{"name": "Acme", "date": "2020"}, {"name": "Acme", "date": "2021"}]}]
             },
         )
     )

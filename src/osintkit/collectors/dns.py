@@ -72,16 +72,10 @@ async def _lookup(ctx: Context, host: str, rtype: str) -> list[str]:
 
 async def _all_records(ctx: Context, host: str) -> dict[str, list[str]]:
     results = await asyncio.gather(*(_lookup(ctx, host, rt) for rt in RECORD_TYPES))
-    return {
-        rtype: value
-        for rtype, value in zip(RECORD_TYPES, results, strict=True)
-        if value
-    }
+    return {rtype: value for rtype, value in zip(RECORD_TYPES, results, strict=True) if value}
 
 
-@collector(
-    "dns_records", ("domain",), "A/AAAA/MX/TXT/NS/CNAME records", order=30, ttl=3600
-)
+@collector("dns_records", ("domain",), "A/AAAA/MX/TXT/NS/CNAME records", order=30, ttl=3600)
 async def dns_records(ctx: Context) -> dict:
     host = ctx.target.lower()
     key = _key(ctx, host)
@@ -93,9 +87,7 @@ async def dns_records(ctx: Context) -> dict:
     return records
 
 
-@collector(
-    "dns_mail_posture", ("domain",), "SPF, DMARC, and DKIM hints", order=31, ttl=3600
-)
+@collector("dns_mail_posture", ("domain",), "SPF, DMARC, and DKIM hints", order=31, ttl=3600)
 async def dns_mail_posture(ctx: Context) -> dict:
     host = ctx.target.lower()
     key = f"mail:{_key(ctx, host)}"

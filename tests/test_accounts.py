@@ -24,9 +24,7 @@ async def test_gravatar_absent(make_context):
 @respx.mock
 async def test_gravatar_transport_error(make_context):
     ctx = make_context("alice@example.com", "email")
-    respx.get(url__startswith="https://gravatar.com/avatar/").mock(
-        side_effect=httpx.ConnectError("down")
-    )
+    respx.get(url__startswith="https://gravatar.com/avatar/").mock(side_effect=httpx.ConnectError("down"))
     result = await accounts.gravatar(ctx)
     assert result["checked"] is False
 

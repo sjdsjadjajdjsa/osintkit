@@ -105,8 +105,7 @@ async def test_bad_target_raises(settings, console):
 def test_history_reads_runs(tmp_path):
     logger = RunLogger("abc", "example.com", "domain")
     logger.event("run_start")
-    logger.collector(collector="x", ok=True, skipped=False, note=None, error=None,
-                     elapsed_ms=1, size=3)
+    logger.collector(collector="x", ok=True, skipped=False, note=None, error=None, elapsed_ms=1, size=3)
     logger.event("run_end", risk_level="low", report_path=None)
     runs = read_runs()
     assert runs[0]["run_id"] == "abc"

@@ -11,12 +11,18 @@ def report():
         model="test-model",
         elapsed_ms=12,
         collectors=[
-            CollectorResult(collector="xposed_or_not", target="t", target_type="email",
-                            data={"found": 1}),
-            CollectorResult(collector="hibp_breaches", target="t", target_type="email",
-                            ok=False, skipped=True, note="skipped: no key"),
-            CollectorResult(collector="code_mentions", target="t", target_type="email",
-                            ok=False, error="HTTP 500"),
+            CollectorResult(collector="xposed_or_not", target="t", target_type="email", data={"found": 1}),
+            CollectorResult(
+                collector="hibp_breaches",
+                target="t",
+                target_type="email",
+                ok=False,
+                skipped=True,
+                note="skipped: no key",
+            ),
+            CollectorResult(
+                collector="code_mentions", target="t", target_type="email", ok=False, error="HTTP 500"
+            ),
         ],
         analysis=Analysis(
             summary="A small footprint [with brackets].",

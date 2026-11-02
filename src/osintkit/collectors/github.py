@@ -138,9 +138,7 @@ async def github_user_search(ctx: Context) -> dict:
     }
 
 
-LEGAL_SUFFIX = re.compile(
-    r"\b(inc|llc|ltd|limited|gmbh|corp|corporation|plc|ag|sa|bv|oy|pty)\.?$", re.I
-)
+LEGAL_SUFFIX = re.compile(r"\b(inc|llc|ltd|limited|gmbh|corp|corporation|plc|ag|sa|bv|oy|pty)\.?$", re.I)
 
 
 def org_slugs(company: str) -> list[str]:

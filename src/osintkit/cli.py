@@ -60,13 +60,15 @@ def root(
     max_attempts: int = typer.Option(3, "--max-attempts", min=1, max=6),
     no_cache: bool = typer.Option(False, "--no-cache", help="Bypass the 24h cache."),
     cache_ttl: int = typer.Option(86400, "--cache-ttl", help="Cache lifetime in seconds."),
-    resolver: list[str] | None = typer.Option(
-        None, "--resolver", help="DNS resolver IP to use, repeatable."
-    ),
+    resolver: list[str] | None = typer.Option(None, "--resolver", help="DNS resolver IP to use, repeatable."),
     verbose: bool = typer.Option(False, "--verbose", "-v", help="Show collector detail."),
     version: bool = typer.Option(
-        False, "--version", "-V", help="Print version and exit.",
-        callback=_version_callback, is_eager=True,
+        False,
+        "--version",
+        "-V",
+        help="Print version and exit.",
+        callback=_version_callback,
+        is_eager=True,
     ),
 ) -> None:
     settings = Settings(
@@ -92,12 +94,22 @@ def root(
 
 
 def _pick_target(
-    target: str | None, email: str | None, username: str | None,
-    domain: str | None, company: str | None,
+    target: str | None,
+    email: str | None,
+    username: str | None,
+    domain: str | None,
+    company: str | None,
 ) -> tuple[str, str | None]:
-    supplied = [(name, value) for name, value in (
-        ("email", email), ("username", username), ("domain", domain), ("company", company),
-    ) if value]
+    supplied = [
+        (name, value)
+        for name, value in (
+            ("email", email),
+            ("username", username),
+            ("domain", domain),
+            ("company", company),
+        )
+        if value
+    ]
     if len(supplied) > 1:
         raise TargetParseError("pass only one of --email/--username/--domain/--company")
     if supplied:
@@ -123,11 +135,16 @@ def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
         bundle = outcome.extra["bundle"]
         print(json.dumps(bundle.model_dump(mode="json"), indent=2, ensure_ascii=False, default=str))
     elif settings.dry_run and settings.output_json:
-        print(json.dumps(
-            {"target": report.target, "target_type": report.target_type,
-             "prompt": outcome.extra.get("prompt")},
-            indent=2,
-        ))
+        print(
+            json.dumps(
+                {
+                    "target": report.target,
+                    "target_type": report.target_type,
+                    "prompt": outcome.extra.get("prompt"),
+                },
+                indent=2,
+            )
+        )
     elif settings.output_json:
         render.print_json(report)
     elif settings.output_markdown:
@@ -163,9 +180,7 @@ def lookup(
 ) -> None:
     """Look up one target."""
     out = _console()
-    settings = _settings(
-        output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw
-    )
+    settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
     if out_path:
         settings.extra["markdown_path"] = str(out_path)
     try:
@@ -178,7 +193,10 @@ def lookup(
     try:
         outcome = asyncio.run(
             pipeline.execute(
-                raw, settings, logger, out,
+                raw,
+                settings,
+                logger,
+                out,
                 declared_type=declared,
                 only=_parse_sets(only),
                 skip=_parse_sets(skip),
@@ -233,16 +251,13 @@ def batch(
     dry_run: bool = typer.Option(False, "--dry-run", help="Print prompts, skip the model."),
     raw: bool = typer.Option(False, "--raw", help="JSON array of collected data, skip the model."),
     fail_fast: bool = typer.Option(False, "--fail-fast", help="Stop reporting at the first error."),
-    concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10,
-                                    help="Targets to run at once."),
+    concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10, help="Targets to run at once."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
-    settings = _settings(
-        output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw
-    )
+    settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
     settings.extra["quiet_progress"] = True
     try:
         rows = _read_batch(file)
@@ -265,16 +280,19 @@ def batch(
             async with gate:
                 try:
                     outcome = await pipeline.execute(
-                        value, settings, logger, out,
-                        declared_type=declared, only=only_set, skip=skip_set,
+                        value,
+                        settings,
+                        logger,
+                        out,
+                        declared_type=declared,
+                        only=only_set,
+                        skip=skip_set,
                     )
                 except TargetParseError as exc:
                     return index, value, exc
                 return index, value, outcome
 
-        return await asyncio.gather(
-            *(one((i, v, d)) for i, (v, d) in enumerate(rows, start=1))
-        )
+        return await asyncio.gather(*(one((i, v, d)) for i, (v, d) in enumerate(rows, start=1)))
 
     reports = []
     bundles = []
@@ -330,9 +348,7 @@ def batch(
 @app.command()
 def history(
     limit: int = typer.Option(20, "--limit", "-n", min=1, max=200),
-    show: str | None = typer.Option(
-        None, "--show", help="Replay a stored report by archive path or run id."
-    ),
+    show: str | None = typer.Option(None, "--show", help="Replay a stored report by archive path or run id."),
     json_out: bool = typer.Option(False, "--json", help="JSON output."),
 ) -> None:
     """Show past runs, or replay one archived report."""
@@ -442,9 +458,7 @@ def prune(
     out = _console()
     counts = retention.prune(days, dry_run=dry_run)
     verb = "would remove" if dry_run else "removed"
-    out.print(
-        f"{verb}: {counts['cache']} cached, {counts['logs']} log, {counts['reports']} report files"
-    )
+    out.print(f"{verb}: {counts['cache']} cached, {counts['logs']} log, {counts['reports']} report files")
 
 
 @app.command()

@@ -78,9 +78,7 @@ async def passive_subdomains(ctx: Context) -> dict:
             names.add(name)
 
     candidates = sorted(names)
-    resolved = await asyncio.gather(
-        *(_resolve(n, ctx.settings.resolvers) for n in candidates[:80])
-    )
+    resolved = await asyncio.gather(*(_resolve(n, ctx.settings.resolvers) for n in candidates[:80]))
     live = {name: ip for name, ip in zip(candidates[:80], resolved, strict=True) if ip}
 
     unresolved_prefixes = []

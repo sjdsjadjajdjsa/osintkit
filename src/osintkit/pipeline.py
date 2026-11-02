@@ -64,11 +64,16 @@ def _slug(target: str) -> str:
     return (slug[:50] or "target").lower()
 
 
-async def collect(target: str, target_type: str, settings: Settings, logger: RunLogger,
-                  http: HttpClient, only: set[str] | None, skip: set[str] | None) -> list[CollectorResult]:
-    ctx = collectors.Context(
-        target=target, target_type=target_type, settings=settings, http=http
-    )
+async def collect(
+    target: str,
+    target_type: str,
+    settings: Settings,
+    logger: RunLogger,
+    http: HttpClient,
+    only: set[str] | None,
+    skip: set[str] | None,
+) -> list[CollectorResult]:
+    ctx = collectors.Context(target=target, target_type=target_type, settings=settings, http=http)
     specs = collectors.collectors_for(target_type)
     if only:
         specs = [s for s in specs if s.name in only]
@@ -135,8 +140,13 @@ async def execute(
 
     logger.target = target
     logger.target_type = target_type
-    logger.event("run_start", base_url=settings.base_url, model=settings.model,
-                 dry_run=settings.dry_run, cache=settings.use_cache)
+    logger.event(
+        "run_start",
+        base_url=settings.base_url,
+        model=settings.model,
+        dry_run=settings.dry_run,
+        cache=settings.use_cache,
+    )
 
     report = Report(
         target=target,
@@ -167,16 +177,16 @@ async def execute(
                 render.print_prompt(synthesis_prompt, console)
             archived = archive_report(report.model_dump(mode="json"))
             logger.event(
-                "run_end", dry_run=True, prompt=synthesis_prompt,
+                "run_end",
+                dry_run=True,
+                prompt=synthesis_prompt,
                 report_path=str(archived) if archived else None,
             )
             return Outcome(report=report, extra={"prompt": synthesis_prompt}, archived=archived)
 
         try:
             if not settings.resolved_api_key():
-                raise MissingAPIKey(
-                    "No API key. Set API_KEY or pass --api-key (dry run works without one)."
-                )
+                raise MissingAPIKey("No API key. Set API_KEY or pass --api-key (dry run works without one).")
             async with LLMClient(settings, http) as client:
                 with _status(progress, settings, "[cyan]synthesising briefing…[/cyan]"):
                     report.analysis = await synthesis.synthesize(

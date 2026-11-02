@@ -62,9 +62,7 @@ async def crt_sh_subdomains(ctx: Context) -> list[str]:
     return _names(entries, ctx.target.lower())
 
 
-@collector(
-    "crt_sh_certificates", ("domain",), "Issued certificates from crt.sh", order=21, timeout=90
-)
+@collector("crt_sh_certificates", ("domain",), "Issued certificates from crt.sh", order=21, timeout=90)
 async def crt_sh_certificates(ctx: Context) -> list[dict]:
     entries = await _query(ctx, f"%.{ctx.target}", "crt")
     certs = []

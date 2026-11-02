@@ -50,8 +50,17 @@ class RunLogger:
         except OSError:
             return
 
-    def collector(self, *, collector: str, ok: bool, skipped: bool, note: str | None,
-                  error: str | None, elapsed_ms: int, size: int) -> None:
+    def collector(
+        self,
+        *,
+        collector: str,
+        ok: bool,
+        skipped: bool,
+        note: str | None,
+        error: str | None,
+        elapsed_ms: int,
+        size: int,
+    ) -> None:
         self.event(
             "collector",
             collector=collector,
@@ -63,8 +72,16 @@ class RunLogger:
             payload_size=size,
         )
 
-    def request(self, *, base_url: str, model: str, attempt: int, dry_run: bool,
-                messages: list[dict[str, str]], max_tokens: int) -> None:
+    def request(
+        self,
+        *,
+        base_url: str,
+        model: str,
+        attempt: int,
+        dry_run: bool,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+    ) -> None:
         self.event(
             "model_request",
             base_url=base_url,
@@ -75,8 +92,9 @@ class RunLogger:
             messages=messages,
         )
 
-    def response(self, *, attempt: int, ok: bool, error: str | None, elapsed_ms: int,
-                 content: str | None) -> None:
+    def response(
+        self, *, attempt: int, ok: bool, error: str | None, elapsed_ms: int, content: str | None
+    ) -> None:
         self.event(
             "model_response",
             attempt=attempt,
@@ -95,7 +113,9 @@ def archive_report(report: dict[str, Any]) -> Path | None:
         root = reports_dir()
         root.mkdir(parents=True, exist_ok=True)
         stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-        path = root / f"{stamp}-{_slug(str(report.get('target', 'target')))}-{int(time.time()*1000)%1000}.json"
+        path = (
+            root / f"{stamp}-{_slug(str(report.get('target', 'target')))}-{int(time.time() * 1000) % 1000}.json"
+        )
         path.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str), "utf-8")
         return path
     except OSError:

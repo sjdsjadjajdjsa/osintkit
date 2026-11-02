@@ -39,9 +39,7 @@ class LLMClient:
     ) -> str:
         api_key = self.settings.resolved_api_key()
         if not api_key:
-            raise MissingAPIKey(
-                "No API key. Set API_KEY in the environment or pass --api-key."
-            )
+            raise MissingAPIKey("No API key. Set API_KEY in the environment or pass --api-key.")
 
         payload: dict[str, Any] = {
             "model": self.settings.model,

@@ -137,9 +137,13 @@ requests and the synthesis call.
 
 ```bash
 pip install -e '.[dev]'
+pre-commit install          # optional: ruff check + format on commit
 pytest
 uvx ruff check src tests
 ```
+
+Tests live in `tests/` and never touch the network: HTTP goes through `respx`, DNS and WHOIS
+are monkeypatched, and `tests/fixtures/` holds a recorded model reply for the full-stack path.
 
 CI runs both on Python 3.12 and 3.13.
 

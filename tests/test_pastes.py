@@ -61,9 +61,7 @@ async def test_hackertarget_error_text_is_noted(make_context):
 async def test_gist_fallback_dedupes_and_caps(make_context):
     ctx = make_context("alice", "username")
     respx.get(url__startswith="https://psbdmp.ws/").mock(return_value=httpx.Response(500))
-    links = "".join(
-        f'<a href="/owner/{index:040x}">x</a>' for index in range(40)
-    )
+    links = "".join(f'<a href="/owner/{index:040x}">x</a>' for index in range(40))
     links += '<a href="/owner/' + f"{0:040x}" + '">dup</a>'
     respx.get(url__startswith="https://gist.github.com/search").mock(
         return_value=httpx.Response(200, text=links)

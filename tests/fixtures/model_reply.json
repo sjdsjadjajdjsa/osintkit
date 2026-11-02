@@ -1,0 +1,13 @@
+{
+  "summary": "The address appears in one credential-bearing breach and has a public GitHub presence. No domain was supplied, so infrastructure is unassessed.",
+  "breaches": [
+    {"name": "Acme", "date": "2020-02-02", "data_types": "Emails; Password hashes", "source": "xposedornot"}
+  ],
+  "associated_accounts": [{"platform": "GitHub", "handle": "alice", "url": "https://github.com/alice"}],
+  "infrastructure_notes": ["hibp_breaches was skipped: HIBP_API_KEY not set."],
+  "subdomains": [],
+  "risk_level": "Medium",
+  "recommendations": ["Rotate the password from Acme and enable 2FA on the address."],
+  "confidence": {"summary": "high"},
+  "extra_comment": "unused by the schema"
+}

@@ -85,9 +85,7 @@ async def test_cached_replay_drops_encoding_headers(settings):
     async with HttpClient(settings) as client:
         compressed = gzip.compress(b'{"ok": true}')
         respx.get(URL).mock(
-            return_value=httpx.Response(
-                200, content=compressed, headers={"content-encoding": "gzip"}
-            )
+            return_value=httpx.Response(200, content=compressed, headers={"content-encoding": "gzip"})
         )
         assert await client.get_json(URL, namespace="enc") == {"ok": True}
         assert await client.get_json(URL, namespace="enc") == {"ok": True}
@@ -97,9 +95,7 @@ async def test_cached_replay_drops_encoding_headers(settings):
 async def test_github_quota_403_is_retried_as_rate_limit(settings):
     settings.max_attempts = 2
     async with HttpClient(settings) as client:
-        respx.get(URL).mock(
-            return_value=httpx.Response(403, headers={"x-ratelimit-remaining": "0"})
-        )
+        respx.get(URL).mock(return_value=httpx.Response(403, headers={"x-ratelimit-remaining": "0"}))
         with pytest.raises(RateLimited):
             await client.get_json(URL, namespace="q")
         assert respx.get(URL).call_count == 2
@@ -126,9 +122,7 @@ async def test_concurrent_identical_requests_are_coalesced(settings):
 
     respx.get(URL).mock(side_effect=slow)
     async with HttpClient(settings) as client:
-        results = await asyncio.gather(
-            *(client.get_json(URL, namespace="dedupe") for _ in range(4))
-        )
+        results = await asyncio.gather(*(client.get_json(URL, namespace="dedupe") for _ in range(4)))
     assert results == [{"ok": True}] * 4
     assert calls["n"] == 1
 

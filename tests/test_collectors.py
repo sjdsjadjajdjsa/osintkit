@@ -59,9 +59,7 @@ async def test_xposed_parses_breach_details(make_context):
             200,
             json={
                 "breach_details": {
-                    "breaches": [
-                        {"breach": "Acme", "domain": "acme.test", "xposed_data": "Emails"}
-                    ]
+                    "breaches": [{"breach": "Acme", "domain": "acme.test", "xposed_data": "Emails"}]
                 }
             },
         )
@@ -140,9 +138,7 @@ async def test_dns_mail_posture_flags_spf_strict(make_context, monkeypatch):
 
 async def test_whois_returns_clean_fields(make_context, monkeypatch):
     ctx = make_context("example.com")
-    monkeypatch.setattr(
-        whois_lookup, "_blocking_lookup", lambda domain: {"registrar": "Example Registrar"}
-    )
+    monkeypatch.setattr(whois_lookup, "_blocking_lookup", lambda domain: {"registrar": "Example Registrar"})
     result = await whois_lookup.whois_registration(ctx)
     assert result["registrar"] == "Example Registrar"
 
@@ -206,9 +202,7 @@ async def test_username_presence_reports_found(make_context):
 async def test_psbdmp_parses_pastes(make_context):
     ctx = make_context("alice", "username")
     respx.get(url__startswith="https://psbdmp.ws/").mock(
-        return_value=httpx.Response(
-            200, json={"count": 1, "data": [{"id": "abc", "tags": ["t"], "len": 5}]}
-        )
+        return_value=httpx.Response(200, json={"count": 1, "data": [{"id": "abc", "tags": ["t"], "len": 5}]})
     )
     result = await pastes.psbdmp_search(ctx)
     assert result["pastes"][0]["url"] == "https://pastebin.com/abc"
@@ -273,8 +267,9 @@ async def test_passive_subdomains_merges_sources(make_context, monkeypatch):
 
 async def test_run_collector_skips_without_requirement(make_context):
     ctx = make_context("alice@example.com", "email")
-    spec = base.Collector(name="hibp_breaches", target_types=("email",),
-                          func=breaches.hibp_breaches, requires="hibp")
+    spec = base.Collector(
+        name="hibp_breaches", target_types=("email",), func=breaches.hibp_breaches, requires="hibp"
+    )
     result = await run_collector(spec, ctx)
     assert result.skipped and "HIBP_API_KEY" in result.note
 
@@ -343,9 +338,7 @@ async def test_psbdmp_empty_result_also_falls_back(make_context):
 async def test_psbdmp_fallback_failure_is_reported(make_context):
     ctx = make_context("alice", "username")
     respx.get(url__startswith="https://psbdmp.ws/").mock(return_value=httpx.Response(503))
-    respx.get(url__startswith="https://gist.github.com/search").mock(
-        return_value=httpx.Response(429)
-    )
+    respx.get(url__startswith="https://gist.github.com/search").mock(return_value=httpx.Response(429))
     result = await pastes.psbdmp_search(ctx)
     assert result["pastes"] == []
     assert "gist search HTTP 429" in result["note"]
@@ -374,9 +367,7 @@ async def test_org_slug_variants_strip_legal_suffix():
 @respx.mock
 async def test_github_org_repos_tries_suffix_variant(make_context):
     ctx = make_context("Example Ltd", "company")
-    respx.get("https://api.github.com/orgs/example-ltd/repos").mock(
-        return_value=httpx.Response(404)
-    )
+    respx.get("https://api.github.com/orgs/example-ltd/repos").mock(return_value=httpx.Response(404))
     respx.get("https://api.github.com/orgs/example/repos").mock(
         return_value=httpx.Response(200, json=[{"name": "repo"}])
     )

@@ -156,9 +156,7 @@ async def hackertarget_hostsearch(ctx: Context) -> dict:
     return {"count": len(hosts), "hosts": hosts[:100]}
 
 
-@collector(
-    "hn_mentions", ("email", "username", "domain", "company"), "Hacker News mentions", order=73
-)
+@collector("hn_mentions", ("email", "username", "domain", "company"), "Hacker News mentions", order=73)
 async def hn_mentions(ctx: Context) -> dict:
     response = await ctx.http.get(
         "https://hn.algolia.com/api/v1/search",
@@ -229,8 +227,7 @@ async def stackoverflow_mentions(ctx: Context) -> dict:
         items.append(
             {
                 "title": item.get("title"),
-                "url": item.get("question_id")
-                and f"https://stackoverflow.com/q/{item.get('question_id')}",
+                "url": item.get("question_id") and f"https://stackoverflow.com/q/{item.get('question_id')}",
                 "item_type": item.get("item_type"),
                 "score": item.get("score"),
                 "tags": item.get("tags"),

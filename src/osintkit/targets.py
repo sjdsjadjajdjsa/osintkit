@@ -7,9 +7,7 @@ import re
 from .errors import TargetParseError
 
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[A-Za-z]{2,}$")
-DOMAIN_RE = re.compile(
-    r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$"
-)
+DOMAIN_RE = re.compile(r"^(?=.{1,253}$)(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$")
 USERNAME_RE = re.compile(r"^[A-Za-z0-9](?:[A-Za-z0-9._-]{0,38})$")
 COMPANY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 .,&'()+-]*$")
 COMPANY_HINTS = re.compile(r"\b(inc|llc|ltd|gmbh|corp|corporation|limited|plc|ag|sa|bv|oy|pty)\b", re.I)
@@ -38,9 +36,7 @@ def detect_type(target: str) -> str:
         return "company"
     if USERNAME_RE.match(target):
         return "username"
-    raise TargetParseError(
-        f"could not tell what {target!r} is; pass --type explicitly"
-    )
+    raise TargetParseError(f"could not tell what {target!r} is; pass --type explicitly")
 
 
 def resolve(target: str, declared: str | None = None) -> tuple[str, str]:

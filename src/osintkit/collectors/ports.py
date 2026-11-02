@@ -41,9 +41,7 @@ TIMEOUT = 2.5
 async def _probe(host: str, port: int, service: str, semaphore: asyncio.Semaphore) -> dict | None:
     async with semaphore:
         try:
-            reader, writer = await asyncio.wait_for(
-                asyncio.open_connection(host, port), timeout=TIMEOUT
-            )
+            reader, writer = await asyncio.wait_for(asyncio.open_connection(host, port), timeout=TIMEOUT)
         except (TimeoutError, OSError):
             return None
         banner = ""
@@ -69,9 +67,7 @@ async def tcp_ports(ctx: Context) -> dict:
         return cached
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
-    results = await asyncio.gather(
-        *(_probe(host, port, service, semaphore) for port, service in PORTS.items())
-    )
+    results = await asyncio.gather(*(_probe(host, port, service, semaphore) for port, service in PORTS.items()))
     open_ports = [r for r in results if r]
     payload = {
         "host": host,

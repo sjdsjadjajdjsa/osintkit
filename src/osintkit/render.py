@@ -190,11 +190,15 @@ def to_markdown(report: Report) -> str:
             lines.append("")
         else:
             lines += ["None found in the queried sources.", ""]
-        _md_list(lines, "Associated accounts", [
-            f"{a.platform}{f' ({a.handle})' if a.handle else ''}"
-            f"{f' - {a.url}' if a.url else ''}{f': {a.note}' if a.note else ''}"
-            for a in analysis.associated_accounts
-        ])
+        _md_list(
+            lines,
+            "Associated accounts",
+            [
+                f"{a.platform}{f' ({a.handle})' if a.handle else ''}"
+                f"{f' - {a.url}' if a.url else ''}{f': {a.note}' if a.note else ''}"
+                for a in analysis.associated_accounts
+            ],
+        )
         _md_list(lines, "Infrastructure and attack surface", analysis.infrastructure_notes)
         _md_list(lines, "Subdomains", analysis.subdomains)
         _md_list(lines, "Recommendations", analysis.recommendations)

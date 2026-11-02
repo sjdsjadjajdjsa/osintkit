@@ -10,6 +10,7 @@ from osintkit.collectors import base
 
 runner = CliRunner()
 
+
 def jsonish(output):
     starts = [i for i in (output.find("{"), output.find("[")) if i != -1]
     start = min(starts)
@@ -38,8 +39,9 @@ def fake_collector(monkeypatch):
     async def fake(ctx):
         return {"k": "v"}
 
-    spec = base.Collector(name="fake_source", target_types=("domain", "email", "username", "company"),
-                          func=fake)
+    spec = base.Collector(
+        name="fake_source", target_types=("domain", "email", "username", "company"), func=fake
+    )
     monkeypatch.setattr(base, "REGISTRY", [spec])
     monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
 
@@ -196,8 +198,9 @@ def test_batch_preserves_order(monkeypatch, tmp_path):
     csv_file.write_text("a.com\nb.com\nc.com\n")
     result = runner.invoke(app, ["batch", "--file", str(csv_file), "--concurrency", "2"])
     assert result.exit_code == 0
-    positions = [result.output.index(f"{name}.com ", result.output.index("batch summary"))
-                 for name in ("a", "b", "c")]
+    positions = [
+        result.output.index(f"{name}.com ", result.output.index("batch summary")) for name in ("a", "b", "c")
+    ]
     assert positions == sorted(positions)
 
 
@@ -229,9 +232,7 @@ def test_invalid_resolver_rejected():
 
 def test_resolver_flag_is_accepted(monkeypatch):
     monkeypatch.setattr(pipeline, "LLMClient", None)
-    result = runner.invoke(
-        app, ["--resolver", "1.1.1.1", "lookup", "--domain", "a.com", "--raw"]
-    )
+    result = runner.invoke(app, ["--resolver", "1.1.1.1", "lookup", "--domain", "a.com", "--raw"])
     assert result.exit_code == 0
 
 
