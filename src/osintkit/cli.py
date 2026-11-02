@@ -18,7 +18,7 @@ from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
 
-from . import __version__, doctor, pipeline, render, retention
+from . import __version__, diff, doctor, pipeline, render, retention
 from .collectors import REGISTRY
 from .config import (
     DEFAULT_BASE_URL,
@@ -432,12 +432,7 @@ def history(
     """Show past runs, or replay one archived report."""
     out = _console()
     if show:
-        target = show
-        if not Path(show).exists():
-            found = find_report_for_run(show)
-            if found:
-                target = found
-        payload = read_report(target)
+        payload = _load_report(show)
         if payload is None and run_exists(show):
             out.print(f"[red]run {show} has no archived report (dry run or early failure)[/red]")
             raise typer.Exit(1)
@@ -538,6 +533,76 @@ def prune(
     counts = retention.prune(days, dry_run=dry_run)
     verb = "would remove" if dry_run else "removed"
     out.print(f"{verb}: {counts['cache']} cached, {counts['logs']} log, {counts['reports']} report files")
+
+
+def _load_report(ref: str) -> dict | None:
+    target = ref
+    if not Path(ref).exists():
+        found = find_report_for_run(ref)
+        if found:
+            target = found
+    return read_report(target)
+
+
+@app.command("diff")
+def diff_cmd(
+    old_ref: str = typer.Argument(..., help="Older run id or report path."),
+    new_ref: str = typer.Argument(..., help="Newer run id or report path."),
+    json_out: bool = typer.Option(False, "--json", help="JSON output."),
+) -> None:
+    """Compare two archived runs."""
+    from .models import Report
+
+    out = _console()
+    loaded = []
+    for ref in (old_ref, new_ref):
+        payload = _load_report(ref)
+        if payload is None:
+            out.print(f"[red]cannot read report {ref}[/red]")
+            raise typer.Exit(1)
+        try:
+            loaded.append(Report.model_validate(payload))
+        except ValueError as exc:
+            out.print(f"[red]unreadable report {ref}: {exc}[/red]")
+            raise typer.Exit(1) from exc
+
+    result = diff.compare(loaded[0], loaded[1])
+    if json_out:
+        print(json.dumps(result, indent=2))
+        raise typer.Exit(0)
+
+    if result["target_changed"]:
+        out.print(
+            f"[yellow]different targets: {render.escape(result['old_target'])} -> "
+            f"{render.escape(result['new_target'])}[/yellow]"
+        )
+    old_risk, new_risk = result["risk"]["old"] or "-", result["risk"]["new"] or "-"
+    style = "red" if result["risk_rose"] else "green" if result["risk_fell"] else "dim"
+    out.print(f"risk: {old_risk} -> [{style}]{new_risk}[/]")
+    if not diff.is_empty(result):
+        table = Table(box=box.SIMPLE_HEAD, title="changes")
+        table.add_column("area")
+        table.add_column("added/failing")
+        table.add_column("removed/recovered")
+        table.add_row(
+            "breaches",
+            render.escape(", ".join(result["breaches"]["added"]) or "-"),
+            render.escape(", ".join(result["breaches"]["removed"]) or "-"),
+        )
+        table.add_row(
+            "subdomains",
+            render.escape(", ".join(result["subdomains"]["added"]) or "-"),
+            render.escape(", ".join(result["subdomains"]["removed"]) or "-"),
+        )
+        table.add_row(
+            "collectors",
+            render.escape(", ".join(result["collectors"]["started_failing"]) or "-"),
+            render.escape(", ".join(result["collectors"]["started_working"]) or "-"),
+        )
+        out.print(table)
+        out.print(f"[dim]{result['breaches']['unchanged']} breaches unchanged[/dim]")
+    else:
+        out.print("[dim]no material changes[/dim]")
 
 
 @app.command()

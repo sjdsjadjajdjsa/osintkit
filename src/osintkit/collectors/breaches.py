@@ -125,6 +125,7 @@ async def xposed_or_not(ctx: Context) -> dict:
             )
     if not breaches:
         breaches = [{"name": name, "source": "xposedornot"} for name in names]
+    breaches.sort(key=lambda item: str(item.get("name") or "").lower())
     return {
         "found": max(total_found, len(breaches)),
         "listed": len(breaches[:MAX_LISTED]),

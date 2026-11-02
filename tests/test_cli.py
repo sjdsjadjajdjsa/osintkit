@@ -362,3 +362,44 @@ def test_json_and_markdown_together(monkeypatch, tmp_path):
     assert result.exit_code == 0
     assert destination.exists()
     assert jsonish(result.output)["target"] == "example.com"
+
+
+def _archived(tmp_path, name, risk, breaches=()):
+    from osintkit.models import Analysis, Report
+
+    report = Report(
+        target="example.com",
+        target_type="domain",
+        analysis=Analysis(summary="s", risk_level=risk, breaches=[{"name": b} for b in breaches]),
+    )
+    path = tmp_path / name
+    path.write_text(report.model_dump_json())
+    return str(path)
+
+
+def test_diff_reports_changes(tmp_path):
+    old = _archived(tmp_path, "old.json", "low", ["Acme"])
+    new = _archived(tmp_path, "new.json", "high", ["Acme", "Beta"])
+    result = runner.invoke(app, ["diff", old, new])
+    assert result.exit_code == 0
+    assert "Beta" in result.output
+    assert "low ->" in " ".join(result.output.split())
+
+
+def test_diff_json(tmp_path):
+    old = _archived(tmp_path, "old.json", "low")
+    new = _archived(tmp_path, "new.json", "low", ["Beta"])
+    result = runner.invoke(app, ["diff", old, new, "--json"])
+    assert jsonish(result.output)["breaches"]["added"] == ["Beta"]
+
+
+def test_diff_missing_report(tmp_path):
+    result = runner.invoke(app, ["diff", "nope", str(tmp_path / "x.json")])
+    assert result.exit_code == 1
+    assert "cannot read report" in result.output
+
+
+def test_diff_identical_says_so(tmp_path):
+    path = _archived(tmp_path, "a.json", "low")
+    result = runner.invoke(app, ["diff", path, path])
+    assert "no material changes" in result.output

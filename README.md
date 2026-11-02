@@ -60,6 +60,7 @@ osintkit doctor                                  # check key, endpoint, director
 osintkit doctor --deep                           # also verify the key with a 1-token call
 osintkit schema                                  # JSON schema the model must satisfy
 osintkit prune --days 30                         # delete old cache, logs, reports
+osintkit diff <old-run> <new-run>                  # what changed between two runs
 osintkit history --limit 10
 osintkit history --show ~/.osintkit/reports/20260101T120000-example.com-123.json
 osintkit collectors

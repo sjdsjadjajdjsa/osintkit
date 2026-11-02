@@ -74,3 +74,18 @@ async def test_xposed_caps_the_listed_breaches(make_context):
     assert result["found"] == 120
     assert result["listed"] == breaches.MAX_LISTED
     assert len(result["breaches"]) == breaches.MAX_LISTED
+
+
+@respx.mock
+async def test_xposed_cap_is_stable_across_ordering(make_context):
+    ctx = make_context("alice@example.com", "email")
+    forward = [f"B{index}" for index in range(100)]
+    backward = list(reversed(forward))
+    for names in (forward, backward):
+        respx.get(url__startswith="https://api.xposedornot.com/").mock(
+            return_value=httpx.Response(200, json={"breaches": [names]})
+        )
+        result = await breaches.xposed_or_not(ctx)
+        names_out = [row["name"] for row in result["breaches"]]
+        assert names_out == sorted(names_out)
+        assert names_out[0] == "B0"
