@@ -1,0 +1,20 @@
+name: audit
+
+on:
+  schedule:
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dependencies:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
+      - name: Export requirements
+        run: uv export --frozen --no-hashes --no-emit-project -o requirements.txt
+      - name: Audit
+        run: uvx pip-audit -r requirements.txt --strict --disable-pip

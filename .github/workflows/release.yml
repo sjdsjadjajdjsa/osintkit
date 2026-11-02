@@ -12,8 +12,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: astral-sh/setup-uv@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: astral-sh/setup-uv@94527f2e458b27549849d47d273a16bec83a01e9 # v7
       - name: Build
         run: |
           uv python install 3.12
@@ -30,7 +30,7 @@ jobs:
         run: |
           cd dist
           sha256sum osintkit-*.whl osintkit-*.tar.gz > SHA256SUMS.txt
-      - uses: softprops/action-gh-release@v3
+      - uses: softprops/action-gh-release@5113cdc90fd4d541c801c55356214017bf5ae34b # v3
         with:
           files: |
             dist/*

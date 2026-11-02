@@ -6,6 +6,14 @@ All notable changes are recorded here. The format follows
 
 ## Unreleased
 
+## 0.10.1 — 2026-11-02
+
+### Changed
+
+- workflow actions pinned to commit SHAs
+- weekly `pip-audit` job against the lockfile
+- `NO_COLOR` honoured, covered by a test
+
 ## 0.10.0 — 2026-11-02
 
 ### Added

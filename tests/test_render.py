@@ -104,3 +104,13 @@ def test_notes_in_markdown_without_analysis():
     r.analysis = None
     r.notes.append("synthesis failed: boom")
     assert "synthesis failed: boom" in render.to_markdown(r)
+
+
+def test_no_colour_environment_is_honoured(monkeypatch):
+    from rich.console import Console
+
+    monkeypatch.setenv("NO_COLOR", "1")
+    console = Console(record=True, width=80)
+    render.render_report(report(), console)
+    assert console.no_color is True
+    assert "HIGH" in console.export_text()

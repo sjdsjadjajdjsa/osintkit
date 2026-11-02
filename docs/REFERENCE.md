@@ -172,6 +172,12 @@ or argument).
 `docs/social-preview.png` is a 1280x640 card for the repository. GitHub has no API for it: upload
 it under Settings, General, Social preview.
 
+## Supply chain
+
+Actions are pinned to commit SHAs with the version in a trailing comment; Dependabot still bumps
+them. A weekly `audit` workflow runs `pip-audit` against the exported lockfile. Secrets are
+scanned with push protection on.
+
 ## Scheduled smoke test
 
 `.github/workflows/smoke.yml` runs weekly (and on demand) against two stable domains and fails
