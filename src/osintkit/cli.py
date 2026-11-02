@@ -9,6 +9,7 @@ import json
 import os
 import sys
 from dataclasses import asdict
+from difflib import get_close_matches
 from pathlib import Path
 
 import typer
@@ -18,6 +19,7 @@ from rich.panel import Panel
 from rich.table import Table
 
 from . import __version__, doctor, pipeline, render, retention
+from .collectors import REGISTRY
 from .config import (
     DEFAULT_BASE_URL,
     DEFAULT_MODEL,
@@ -134,17 +136,54 @@ def _pick_target(
     return target, None
 
 
-def _parse_sets(values: list[str] | None) -> set[str] | None:
+def _parse_sets(values: list[str] | None, flag: str = "--only") -> set[str] | None:
     if not values:
         return None
     items: set[str] = set()
     for value in values:
         items.update(part.strip() for part in value.split(",") if part.strip())
-    return items or None
+    if not items:
+        return None
+    known = {spec.name for spec in REGISTRY}
+    unknown = sorted(items - known)
+    if unknown:
+        hint = ""
+        close = get_close_matches(unknown[0], sorted(known), n=3)
+        if close:
+            hint = f"; did you mean {', '.join(close)}?"
+        raise typer.BadParameter(f"{flag} got unknown collector {unknown[0]!r}{hint}")
+    return items
+
+
+def _parse_ports(values: list[str] | None) -> list[str] | None:
+    if not values:
+        return None
+    ports: list[str] = []
+    for value in values:
+        for part in value.split(","):
+            part = part.strip()
+            if not part:
+                continue
+            try:
+                port = int(part)
+            except ValueError:
+                raise typer.BadParameter(f"{part!r} is not a port number") from None
+            if not 1 <= port <= 65535:
+                raise typer.BadParameter(f"port {port} is out of range")
+            if str(port) not in ports:
+                ports.append(str(port))
+    return ports or None
 
 
 def _finish(outcome: pipeline.Outcome, settings: Settings, out) -> int:
     report = outcome.report
+    if settings.output_markdown:
+        destination = Path(settings.extra.get("markdown_path") or pipeline.default_markdown_path(report.target))
+        if destination.is_dir() or str(destination).endswith(("/", os.sep)):
+            destination = destination / pipeline.default_markdown_path(report.target).name
+        path = pipeline.write_markdown(report, destination)
+        out.print(f"[green]markdown written[/green] {path}")
+
     if settings.raw:
         bundle = outcome.extra["bundle"]
         print(json.dumps(bundle.model_dump(mode="json"), indent=2, ensure_ascii=False, default=str))
@@ -193,10 +232,17 @@ def lookup(
     raw: bool = typer.Option(False, "--raw", help="Dump collected data as JSON, skip the model."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
+    ports: list[str] | None = typer.Option(None, "--ports", help="Ports to probe, e.g. 22,443."),
 ) -> None:
     """Look up one target."""
     out = _console()
     settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
+    try:
+        settings.extra["ports"] = _parse_ports(ports)
+    except typer.BadParameter as exc:
+        out.print(f"[red]{exc.message}[/red]")
+        raise typer.Exit(2) from exc
+
     if out_path:
         settings.extra["markdown_path"] = str(out_path)
     try:
@@ -214,8 +260,8 @@ def lookup(
                 logger,
                 out,
                 declared_type=declared,
-                only=_parse_sets(only),
-                skip=_parse_sets(skip),
+                only=_parse_sets(only, "--only"),
+                skip=_parse_sets(skip, "--skip"),
             )
         )
     except TargetParseError as exc:
@@ -270,11 +316,23 @@ def batch(
     concurrency: int = typer.Option(3, "--concurrency", "-c", min=1, max=10, help="Targets to run at once."),
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
+    ports: list[str] | None = typer.Option(None, "--ports", help="Ports to probe, e.g. 22,443."),
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
     settings = _settings(output_json=json_out, output_markdown=markdown, dry_run=dry_run, raw=raw)
+    try:
+        settings.extra["ports"] = _parse_ports(ports)
+    except typer.BadParameter as exc:
+        out.print(f"[red]{exc.message}[/red]")
+        raise typer.Exit(2) from exc
+
     settings.extra["quiet_progress"] = True
+    try:
+        settings.extra["ports"] = _parse_ports(ports)
+    except typer.BadParameter as exc:
+        out.print(f"[red]{exc.message}[/red]")
+        raise typer.Exit(2) from exc
     try:
         rows = _read_batch(file)
     except OSError as exc:
@@ -285,7 +343,11 @@ def batch(
         raise typer.Exit(2)
 
     target_dir = Path(out_dir) if out_dir else Path.cwd()
-    only_set, skip_set = _parse_sets(only), _parse_sets(skip)
+    try:
+        only_set, skip_set = _parse_sets(only, "--only"), _parse_sets(skip, "--skip")
+    except typer.BadParameter as exc:
+        out.print(f"[red]{exc.message}[/red]")
+        raise typer.Exit(2) from exc
 
     async def run_all():
         gate = asyncio.Semaphore(concurrency)

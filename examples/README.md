@@ -30,3 +30,9 @@ Inspect the contract the model must satisfy:
 osintkit schema
 osintkit schema --out analysis.schema.json
 ```
+
+Narrow a port scan:
+
+```bash
+osintkit lookup --domain example.com --only tcp_ports --ports 22,443
+```

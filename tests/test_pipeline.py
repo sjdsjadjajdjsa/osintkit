@@ -127,3 +127,35 @@ async def test_max_tokens_reaches_synthesis(settings, fake_collector, monkeypatc
     settings.max_tokens = 999
     await pipeline.execute("example.com", settings, RunLogger("run7"), console)
     assert seen["max_tokens"] == 999
+
+
+async def test_duplicate_breaches_are_merged_before_prompting(settings, monkeypatch, console):
+    async def one(ctx):
+        return [{"name": "Acme", "date": "2019-01-01", "data_types": ["Emails"], "source": "a"}]
+
+    async def two(ctx):
+        return [{"name": "ACME", "data_types": ["Passwords"], "source": "b"}]
+
+    monkeypatch.setattr(
+        base,
+        "REGISTRY",
+        [
+            base.Collector(name="hibp_breaches", target_types=("email",), func=one),
+            base.Collector(name="xposed_or_not", target_types=("email",), func=two),
+        ],
+    )
+    prompt = {}
+
+    class Capture(FakeLLM):
+        async def chat(self, messages, **kwargs):
+            prompt["user"] = messages[1]["content"]
+            return json.dumps(VALID)
+
+    monkeypatch.setattr(pipeline, "LLMClient", Capture)
+    outcome = await pipeline.execute("a@b.co", settings, RunLogger("merge"), console)
+
+    assert any("merged" in note for note in outcome.report.notes)
+    assert "breach_index" in prompt["user"]
+    assert prompt["user"].count('"name": "Acme"') == 1
+    assert '"sources": [' in prompt["user"]
+    assert [r.collector for r in outcome.report.collectors] == ["hibp_breaches", "xposed_or_not"]

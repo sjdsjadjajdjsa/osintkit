@@ -60,20 +60,32 @@ async def _probe(host: str, port: int, service: str, semaphore: asyncio.Semaphor
 
 
 @collector("tcp_ports", ("domain",), "Open TCP ports on common services", order=80, ttl=3600)
+def selected_ports(override: list[str] | None) -> dict[int, str]:
+    if not override:
+        return dict(PORTS)
+    chosen: dict[int, str] = {}
+    for raw in override:
+        port = int(raw)
+        chosen[port] = PORTS.get(port, "unknown")
+    return dict(sorted(chosen.items()))
+
+
 async def tcp_ports(ctx: Context) -> dict:
+    ports = selected_ports(ctx.settings.extra.get("ports"))
     host = ctx.target.lower()
-    cached = cache_hit(ctx.settings, NAMESPACE, host, ctx.cache_ttl)
+    key = f"{host}|{','.join(str(port) for port in ports)}"
+    cached = cache_hit(ctx.settings, NAMESPACE, key, ctx.cache_ttl)
     if cached is not None:
         return cached
 
     semaphore = asyncio.Semaphore(CONCURRENCY)
-    results = await asyncio.gather(*(_probe(host, port, service, semaphore) for port, service in PORTS.items()))
+    results = await asyncio.gather(*(_probe(host, port, service, semaphore) for port, service in ports.items()))
     open_ports = [r for r in results if r]
     payload = {
         "host": host,
-        "scanned": len(PORTS),
+        "scanned": len(ports),
         "open": sorted(open_ports, key=lambda r: r["port"]),
         "note": "single connect probe from the local network; filtered ports may be missed",
     }
-    cache_put(ctx.settings, NAMESPACE, host, payload)
+    cache_put(ctx.settings, NAMESPACE, key, payload)
     return payload

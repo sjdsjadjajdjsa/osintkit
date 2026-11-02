@@ -446,3 +446,34 @@ async def test_dns_lookup_returns_empty_on_nxdomain(make_context, monkeypatch):
 
     monkeypatch.setattr(dns, "_resolver", lambda _ctx: type("R", (), {"resolve": raise_nxdomain})())
     assert await dns._lookup(ctx, "nope.example", "A") == []
+
+
+async def test_ports_override_limits_the_scan(make_context, monkeypatch):
+    ctx = make_context("example.com")
+    ctx.settings.extra["ports"] = ["8080"]
+    probed = []
+
+    class Reader:
+        async def read(self, n):
+            return b"banner"
+
+    class Writer:
+        def close(self):
+            pass
+
+        async def wait_closed(self):
+            pass
+
+    async def fake_connect(host, port):
+        probed.append(port)
+        return Reader(), Writer()
+
+    monkeypatch.setattr(ports.asyncio, "open_connection", fake_connect)
+    result = await ports.tcp_ports(ctx)
+    assert probed == [8080]
+    assert result["open"][0]["service"] == "http-alt"
+
+
+def test_selected_ports_keeps_order_and_marks_unknown():
+    assert ports.selected_ports(["443", "9999"]) == {443: "https", 9999: "unknown"}
+    assert ports.selected_ports(None)[22] == "ssh"

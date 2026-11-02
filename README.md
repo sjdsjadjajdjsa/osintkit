@@ -53,6 +53,7 @@ osintkit lookup --company "Example Ltd" --json
 osintkit lookup alice@example.com --dry-run          # print the prompt, no model call
 osintkit lookup example.com --raw                    # dump collected JSON, no model call
 osintkit lookup example.com --only dns_records --skip tcp_ports
+osintkit lookup example.com --ports 22,443,8443
 osintkit batch --file examples/targets.csv --out ./reports --concurrency 4
 osintkit batch --file examples/targets.csv --only dns_records,crt_sh_subdomains
 osintkit doctor                                  # check key, endpoint, directories
@@ -71,7 +72,9 @@ Global flags: `--base-url`, `--model`, `--temperature` (default 0.3), `--max-tok
 
 Output flags: `--json` (final report as JSON), `--markdown` (export, default filename
 `<target>-osint.md`, override with `-o`), `--dry-run` (prompt only), `--raw` (collected data
-only). `--dry-run` and `--raw` skip the model and need no key.
+only). `--json` and `--markdown` combine, so a machine-readable run can also leave a file.
+`--dry-run` and `--raw` skip the model and need no key. Unknown `--only`/`--skip` names fail
+with a suggestion instead of silently running nothing.
 
 Exit codes: `0` success, `1` synthesis or partial failure, `2` bad input.
 
@@ -135,6 +138,8 @@ requests and the synthesis call.
 - Targets are normalised first: scheme, `www.`, and trailing paths are stripped.
 - All HTTP is retried with exponential backoff on `429`/`5xx`, up to three attempts.
 - Identical prompts are cached, so a repeat run costs nothing until data or the prompt changes.
+- Breach records are merged across sources on case-insensitive names, keeping every source and
+  the earliest date, so three indexes cannot triple-count one incident.
 - Partial results still produce a report; unavailable sources are listed as gaps.
 - `--dry-run` writes the ready-to-send prompt; `--raw` writes the collected data.
 - `batch --raw` prints a JSON array of bundles, one per target.

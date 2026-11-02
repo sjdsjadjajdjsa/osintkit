@@ -14,7 +14,7 @@ from pathlib import Path
 
 from rich.console import Console
 
-from . import collectors, render, retention, synthesis
+from . import collectors, normalise, render, retention, synthesis
 from .config import Settings
 from .errors import MissingAPIKey, OsintKitError, SynthesisError, TargetParseError
 from .http import HttpClient
@@ -160,7 +160,12 @@ async def execute(
             results = await collect(target, target_type, settings, logger, http, only, skip)
         report.collectors = results
 
-        bundle = PromptBundle(target=target, target_type=target_type, results=results)
+        prompt_results, duplicates = normalise.merge_breaches(results)
+        if duplicates:
+            report.notes.append(f"{duplicates} duplicate breach records were merged across sources")
+            logger.event("breaches_merged", duplicates=duplicates)
+
+        bundle = PromptBundle(target=target, target_type=target_type, results=prompt_results)
 
         if settings.raw:
             report.notes.append("raw output: model not called")

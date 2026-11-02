@@ -44,6 +44,7 @@ def fake_collector(monkeypatch):
     )
     monkeypatch.setattr(base, "REGISTRY", [spec])
     monkeypatch.setattr("osintkit.collectors.REGISTRY", base.REGISTRY)
+    monkeypatch.setattr("osintkit.cli.REGISTRY", base.REGISTRY)
 
 
 class FakeLLM:
@@ -323,3 +324,33 @@ def test_markdown_out_directory_gets_default_filename(monkeypatch, tmp_path):
     result = runner.invoke(app, ["lookup", "--domain", "example.com", "--markdown", "-o", str(target_dir)])
     assert result.exit_code == 0
     assert (target_dir / "example.com-osint.md").exists()
+
+
+def test_unknown_only_collector_suggests_alternative():
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--dry-run", "--only", "fake_sourc"])
+    assert result.exit_code == 2
+    flat = " ".join(result.output.replace("│", " ").split())
+    assert "did you mean fake_source" in flat
+
+
+def test_invalid_port_rejected():
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--dry-run", "--ports", "notaport"])
+    assert result.exit_code == 2
+    assert "not a port number" in result.output
+
+
+def test_out_of_range_port_rejected():
+    result = runner.invoke(app, ["lookup", "--domain", "a.com", "--dry-run", "--ports", "70000"])
+    assert result.exit_code == 2
+    assert "out of range" in result.output
+
+
+def test_json_and_markdown_together(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    destination = tmp_path / "r.md"
+    result = runner.invoke(
+        app, ["lookup", "--domain", "example.com", "--json", "--markdown", "-o", str(destination)]
+    )
+    assert result.exit_code == 0
+    assert destination.exists()
+    assert jsonish(result.output)["target"] == "example.com"
