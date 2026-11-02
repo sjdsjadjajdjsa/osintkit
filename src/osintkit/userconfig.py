@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -13,8 +14,14 @@ SECRET_KEYS = frozenset({"api_key", "hibp_api_key"})
 
 def config_home() -> Path:
     override = os.environ.get("XDG_CONFIG_HOME")
-    base = Path(override).expanduser() if override else Path.home() / ".config"
-    return base / "osintkit"
+    if override:
+        return Path(override).expanduser() / "osintkit"
+    if sys.platform == "win32":
+        base = os.environ.get("APPDATA") or str(Path.home() / "AppData" / "Roaming")
+        return Path(base) / "osintkit"
+    if sys.platform == "darwin":
+        return Path.home() / "Library" / "Application Support" / "osintkit"
+    return Path.home() / ".config" / "osintkit"
 
 
 def config_path() -> Path:

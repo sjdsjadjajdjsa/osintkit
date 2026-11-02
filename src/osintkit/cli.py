@@ -366,6 +366,7 @@ def batch(
     only: list[str] | None = typer.Option(None, "--only", help="Run only these collectors."),
     skip: list[str] | None = typer.Option(None, "--skip", help="Skip these collectors."),
     ports: list[str] | None = typer.Option(None, "--ports", help="Ports to probe, e.g. 22,443."),
+    limit: int = typer.Option(100, "--limit", min=0, help="Refuse files larger than this; 0 allows any."),
 ) -> None:
     """Run every target in a CSV."""
     out = _console()
@@ -395,6 +396,12 @@ def batch(
         raise typer.Exit(2) from exc
     if not rows:
         out.print("[yellow]no targets in file[/yellow]")
+        raise typer.Exit(2)
+    if limit and len(rows) > limit:
+        out.print(
+            f"[red]{len(rows)} targets, limit {limit}[/red]; "
+            "raise it with --limit N or pass --limit 0 for no cap"
+        )
         raise typer.Exit(2)
 
     target_dir = Path(out_dir) if out_dir else Path.cwd()

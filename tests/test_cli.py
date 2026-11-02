@@ -721,3 +721,19 @@ def test_bad_phone_flag_is_usage_error():
     result = runner.invoke(app, ["lookup", "--phone", "5551234567", "--offline"])
     assert result.exit_code == 2
     assert "E.164" in " ".join(result.output.split())
+
+
+def test_batch_limit_refuses_large_file(tmp_path):
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\nb.com\nc.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--offline", "--limit", "2"])
+    assert result.exit_code == 2
+    assert "limit 2" in " ".join(result.output.split())
+
+
+def test_batch_limit_zero_is_uncapped(monkeypatch, tmp_path):
+    monkeypatch.setattr(pipeline, "LLMClient", FakeLLM)
+    csv_file = tmp_path / "t.csv"
+    csv_file.write_text("a.com\nb.com\nc.com\n")
+    result = runner.invoke(app, ["batch", "--file", str(csv_file), "--json", "--limit", "0"])
+    assert result.exit_code == 0

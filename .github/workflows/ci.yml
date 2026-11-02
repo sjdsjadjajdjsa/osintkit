@@ -7,11 +7,17 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
+        os: [ubuntu-latest]
         python-version: ["3.12", "3.13"]
+        include:
+          - os: windows-latest
+            python-version: "3.12"
+          - os: macos-latest
+            python-version: "3.12"
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
@@ -28,4 +34,4 @@ jobs:
           uvx ruff check src tests
           uvx ruff format --check src tests
       - name: Test
-        run: .venv/bin/pytest -q --cov=osintkit --cov-fail-under=85
+        run: uv run --frozen pytest -q --cov=osintkit --cov-fail-under=85

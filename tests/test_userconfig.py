@@ -1,5 +1,6 @@
 import os
 import stat
+import sys
 
 import pytest
 
@@ -13,7 +14,8 @@ def xdg(monkeypatch, tmp_path):
 
 def test_roundtrip_and_permissions():
     path = userconfig.save({"provider": "deepseek", "api_key": "sk-test-123456"})
-    assert stat.S_IMODE(path.stat().st_mode) == 0o600
+    if sys.platform != "win32":
+        assert stat.S_IMODE(path.stat().st_mode) == 0o600
     loaded = userconfig.load()
     assert loaded["provider"] == "deepseek"
     assert loaded["api_key"] == "sk-test-123456"
@@ -55,5 +57,20 @@ def test_config_home_follows_xdg(monkeypatch, tmp_path):
 
 def test_save_creates_private_directory(tmp_path):
     path = userconfig.save({"provider": "venice"})
-    assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
+    if sys.platform != "win32":
+        assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
     assert os.access(path, os.R_OK)
+
+
+def test_config_home_uses_appdata_on_windows(monkeypatch, tmp_path):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setenv("APPDATA", str(tmp_path / "roaming"))
+    monkeypatch.setattr(userconfig.sys, "platform", "win32")
+    assert userconfig.config_home() == tmp_path / "roaming" / "osintkit"
+
+
+def test_config_home_uses_application_support_on_mac(monkeypatch, tmp_path):
+    monkeypatch.delenv("XDG_CONFIG_HOME", raising=False)
+    monkeypatch.setattr(userconfig.sys, "platform", "darwin")
+    monkeypatch.setattr(userconfig.Path, "home", classmethod(lambda cls: tmp_path))
+    assert userconfig.config_home() == tmp_path / "Library" / "Application Support" / "osintkit"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import re
 import shutil
 import subprocess
@@ -43,12 +44,32 @@ def describe(change: dict) -> list[str]:
     return lines
 
 
+def _notify_command(title: str, body: str) -> list[str] | None:
+    if shutil.which("notify-send"):
+        return ["notify-send", "osintkit", title, body]
+    if shutil.which("osascript"):
+        script = f'display notification "{body}" with title "{title}"'
+        return ["osascript", "-e", script]
+    power = shutil.which("powershell") or shutil.which("pwsh")
+    if os.name == "nt" and power:
+        script = (
+            "[Windows.UI.Notifications.ToastNotificationManager, Windows.UI.Notifications,"
+            " ContentType = WindowsRuntime] > $null; "
+            f"$t = [Windows.UI.Notifications.ToastNotificationManager]::GetTemplateContent(0);"
+            f'$t.GetElementsByTagName("text")[0].AppendChild($t.CreateTextNode("{body}")) > $null;'
+            "[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier("
+            f"'osintkit').Show([Windows.UI.Notifications.ToastNotification]::new($t))"
+        )
+        return [power, "-NoProfile", "-Command", script]
+    return None
+
+
 def notify(title: str, body: str) -> bool:
-    binary = shutil.which("notify-send")
-    if not binary:
+    command = _notify_command(title, body)
+    if command is None:
         return False
     try:
-        subprocess.run([binary, "osintkit", title, body], check=False, timeout=10)
+        subprocess.run(command, check=False, timeout=10)
         return True
     except (OSError, subprocess.SubprocessError):
         return False

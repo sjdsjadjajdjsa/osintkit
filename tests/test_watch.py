@@ -79,3 +79,23 @@ async def test_run_respects_cycles():
     )
     assert changes == 0
     assert len(events) == 1
+
+
+def test_notify_command_prefers_notify_send(monkeypatch):
+    monkeypatch.setattr(
+        watch.shutil, "which", lambda name: "/usr/bin/notify-send" if name == "notify-send" else None
+    )
+    assert watch._notify_command("t", "b")[0] == "notify-send"
+
+
+def test_notify_command_uses_osascript_on_mac(monkeypatch):
+    monkeypatch.setattr(
+        watch.shutil, "which", lambda name: "/usr/bin/osascript" if name == "osascript" else None
+    )
+    assert watch._notify_command("t", "b")[:2] == ["osascript", "-e"]
+
+
+def test_notify_command_none_when_nothing_available(monkeypatch):
+    monkeypatch.setattr(watch.shutil, "which", lambda name: None)
+    monkeypatch.setattr(watch.os, "name", "posix")
+    assert watch._notify_command("t", "b") is None
